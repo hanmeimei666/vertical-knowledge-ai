@@ -1,0 +1,19 @@
+{
+  "asset_id": "TO_BE_ASSIGNED",
+  "path": "TO_BE_SELECTED",
+  "sha256": "TO_BE_COMPUTED",
+  "source_owner": "unknown",
+  "rights": {
+    "internal_parse": "unknown",
+    "retrieve_and_quote": "unknown",
+    "adapt": "unknown",
+    "redistribute": "unknown",
+    "model_training": "unknown",
+    "external_model_processing": "unknown"
+  },
+  "authorization_evidence": "unknown",
+  "sensitive_data": "unknown",
+  "admission": "pending",
+  "review_state": "candidate",
+  "source_spans": []
+}

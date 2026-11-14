@@ -1,0 +1,11 @@
+{
+  "project": "vertical-knowledge-ai",
+  "domain": "sports_education",
+  "first_delivery": "course_draft_with_sources",
+  "stage": "preparation",
+  "sample_status": "not_selected",
+  "model_provider": "unknown",
+  "external_processing": "not_enabled",
+  "professional_reviewer": "unknown",
+  "publication": "not_enabled"
+}
