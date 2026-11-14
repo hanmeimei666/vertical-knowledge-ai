@@ -13,3 +13,6 @@
 - `python scripts/check_readiness.py` 返回 SETUP_READY、application_pipeline=NOT_IMPLEMENTED、business_validation=PENDING_REAL_SAMPLE_AND_RIGHTS。
 - 本轮没有模型调用或新付费服务；无真实资料被导入、改编、上传或用于训练。
 - 正在提交并同步启动骨架；下一步待真实样本和用途范围。
+- 启动骨架提交 dabbdee 已成功推送到 origin/main；GitHub 网页已显示 config/docs/scripts 和项目文档，仓库标记为私有。
+- Git 忽略验证通过：.env、data/raw、data/derived、outputs 和 node_modules；暂存差异检查通过。
+- 本轮准备阶段完成；真实业务链路仍等待用户指定样本与用途，未误标为完成。
