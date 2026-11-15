@@ -11,6 +11,8 @@ REQUIRED = (
     "config/project.json", "config/asset_manifest.example.json",
     "config/runtime.json", "config/domain_rules.json", "config/eval_queries.json",
     "docs/系统流程设计与实现.md", "scripts/workflow.py", "scripts/pipeline.py", "scripts/serve.py",
+    "scripts/import_resources.py", "scripts/smoke_import.py", "config/knowledge_unit.example.json",
+    "docs/真实知识资源导入指南.md", "examples/resources/import-demo.txt",
 )
 
 

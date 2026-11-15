@@ -1,7 +1,7 @@
 {
   "id": "EXAMPLE-001",
   "title": "请替换为实际资料标题",
-  "path": "data/raw/example.txt",
+  "path": "data/raw/incoming/example.txt",
   "provenance": "请填写提供者、取得时间及授权依据",
   "sensitive": "unknown",
   "rights": {

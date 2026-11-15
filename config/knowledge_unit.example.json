@@ -1,0 +1,10 @@
+{
+  "id": "K-CURATED-001",
+  "origin": "curator_summary",
+  "title": "请替换为独立专业命题",
+  "tags": ["请填写主题词"],
+  "summary": "请填写基于证据的编辑归纳",
+  "teaching_application": "请填写教学用法",
+  "limits": "请填写适用条件、风险和未知项",
+  "references": [{"source": "EXAMPLE-001", "locator": "L1"}]
+}

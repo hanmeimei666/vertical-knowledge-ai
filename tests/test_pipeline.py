@@ -84,6 +84,7 @@ class PipelineChecks(unittest.TestCase):
         manifest["rights"]["adapt"] = None
         with Pipeline(self.root) as app:
             app.admit(manifest)
+            app.add_unit(self.card)  # Bind this fixture to its current permission revision.
             self.assertEqual(app.evidence("成熟度")["status"], "evidence_candidates")
             self.assertEqual(app.start("成熟度", "adapt-denied")["error"], "no_evidence")
 
@@ -92,6 +93,7 @@ class PipelineChecks(unittest.TestCase):
         manifest["rights"]["retrieve"] = False
         with Pipeline(self.root) as app:
             app.admit(manifest)
+            app.add_unit(self.card)
             self.assertEqual(app.evidence("成熟度")["entries"], [])
 
     def test_reject_bad_rights_paths_coordinates_and_modalities(self):
@@ -160,6 +162,8 @@ class PipelineChecks(unittest.TestCase):
             (self.root / "data/raw/source.txt").write_text("changed", encoding="utf-8")
             self.assertEqual(app.get_run(run["id"])["state"], "invalidated")
             app.admit(self.manifest)
+            self.assertEqual(app.evidence("成熟度")["entries"], [])
+            app.add_unit(self.card)  # Explicitly re-curate against the new source revision.
             run2 = app.start("成熟度", "unit-change")
             card = dict(self.card, limits="revised")
             app.add_unit(card)

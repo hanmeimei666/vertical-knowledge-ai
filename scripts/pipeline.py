@@ -190,7 +190,7 @@ class Pipeline:
         revision = self.put("asset", manifest["id"], body, state)
         return {"id": manifest["id"], "state": state, "revision": revision}
 
-    def add_unit(self, card):
+    def validate_unit(self, card):
         for field in ("id", "title", "summary", "teaching_application", "limits", "tags", "references"):
             if not card.get(field):
                 raise WorkflowError("Missing knowledge field: " + field)
@@ -208,7 +208,22 @@ class Pipeline:
                 raise WorkflowError("Missing evidence source or locator")
             if asset["body"].get("locators") is not None and ref["locator"] not in asset["body"]["locators"]:
                 raise WorkflowError("Unknown source coordinate")
-        body = dict(card, origin="curator_summary", review_state="review_pending")
+        origin = card.get("origin", "curator_summary")
+        if origin not in {"curator_summary", "source_excerpt"}:
+            raise WorkflowError("Knowledge origin must be curator_summary or source_excerpt")
+        if origin == "source_excerpt":
+            if len(card["references"]) != 1:
+                raise WorkflowError("A source excerpt must cite exactly one parsed block")
+            ref = card["references"][0]
+            blocks = assets[ref["source"]]["body"].get("blocks", [])
+            if not any(b["locator"] == ref["locator"] and b["text"] == card["summary"] for b in blocks):
+                raise WorkflowError("Source excerpt must match its original parsed block")
+        return dict(card, origin=origin, review_state="review_pending", source_versions={
+            ref["source"]: {"revision": assets[ref["source"]]["revision"], "hash": assets[ref["source"]]["sha"]}
+            for ref in card["references"]})
+
+    def add_unit(self, card):
+        body = self.validate_unit(card)
         return {"id": card["id"], "revision": self.put("unit", card["id"], body, "review_pending")}
 
     def seed(self):
@@ -242,7 +257,7 @@ class Pipeline:
                           for name in ("pipeline.py", "model_adapter.py")}
         return digest({"records": records, "config": self.config, "rules": self.rules, "implementation": implementation})
 
-    def evidence(self, query, purpose="retrieve"):
+    def evidence(self, query, purpose="retrieve", knowledge_ids=None):
         if purpose not in {"retrieve", "adapt"}:
             raise WorkflowError("Unsupported evidence purpose")
         self.fingerprint()
@@ -250,6 +265,8 @@ class Pipeline:
         assets = {a["id"]: a for a in self.records("asset")}
         results = []
         for unit in self.records("unit"):
+            if knowledge_ids is not None and unit["id"] not in knowledge_ids:
+                continue
             if unit["state"] != "review_pending":
                 continue
             card = unit["body"]
@@ -257,6 +274,9 @@ class Pipeline:
             for ref in card["references"]:
                 source = assets[ref["source"]]
                 body = source["body"]
+                bound = card.get("source_versions", {}).get(ref["source"])
+                if not bound or bound != {"revision": source["revision"], "hash": source["sha"]}:
+                    break  # Changed sources require explicit knowledge re-curation.
                 if source["state"] != "admitted" or body["rights"]["retrieve"] is not True or body["rights"][purpose] is not True:
                     break
                 refs.append(dict(ref, source_revision=source["revision"], source_hash=source["sha"],
@@ -301,12 +321,17 @@ class Pipeline:
                 self.save_run(run)
         return run
 
-    def start(self, goal, request_key):
+    def start(self, goal, request_key, knowledge_ids=None):
         if not isinstance(goal, str) or not 1 <= len(goal.strip()) <= 2000:
             raise WorkflowError("Goal must contain 1..2000 characters")
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", request_key):
             raise WorkflowError("Invalid idempotency key")
         spec = {"goal": goal.strip(), "audience": self.rules["audience"], "kind": self.rules["output_kind"]}
+        if knowledge_ids is not None:
+            available = {u["id"] for u in self.records("unit")}
+            if not knowledge_ids or not set(knowledge_ids) <= available:
+                raise WorkflowError("Knowledge scope must contain existing unit IDs")
+            spec["knowledge_scope"] = sorted(set(knowledge_ids))
         request_hash = digest(spec)
         previous = self.db.execute("SELECT id,request_hash FROM runs WHERE request_key=?", (request_key,)).fetchone()
         if previous:
@@ -337,7 +362,7 @@ class Pipeline:
                 self.save_run(run)
                 return run
             if "evidence" not in run["steps"]:
-                pack = self.evidence(run["request"]["goal"], "adapt")
+                pack = self.evidence(run["request"]["goal"], "adapt", run["request"].get("knowledge_scope"))
                 run["steps"]["evidence"] = pack
                 run.update(state="evidence_ready", error=None)
                 if not pack["entries"]:
@@ -392,7 +417,8 @@ class Pipeline:
         sections = []
         for unit in blueprint["units"]:
             e = entries[unit["knowledge_id"]]
-            lines.extend(["## " + md(e["title"]), "", "编辑归纳：" + md(e["summary"]), "",
+            fact_label = "原文摘录" if e["origin"] == "source_excerpt" else "编辑归纳"
+            lines.extend(["## " + md(e["title"]), "", fact_label + "：" + md(e["summary"]), "",
                           "教学编排（模型或规则建议）：" + md(unit["teaching_goal"]), "", "限制：" + md(e["limits"]), ""])
             refs_html = []
             for ref in e["references"]:
@@ -403,7 +429,7 @@ class Pipeline:
                 if urlsplit(url).scheme in {"http", "https"} and not any(c in url for c in '\n\r<>"'):
                     link = ' <a rel="noreferrer" href="' + html.escape(url, quote=True) + '">来源</a>'
                 refs_html.append("<li>" + html.escape(citation) + link + "</li>")
-            sections.append("<section><h2>" + html.escape(e["title"]) + "</h2><p>编辑归纳：" + html.escape(e["summary"]) +
+            sections.append("<section><h2>" + html.escape(e["title"]) + "</h2><p>" + fact_label + "：" + html.escape(e["summary"]) +
                 "</p><p>教学编排（模型或规则建议）：" + html.escape(unit["teaching_goal"]) + "</p><p>限制：" + html.escape(e["limits"]) +
                 "</p><ul>" + "".join(refs_html) + "</ul></section>")
         lines.extend(["## 适用边界与缺口", ""] + ["- " + md(t) for t in self.rules["limitations"] + pack["gaps"]])
