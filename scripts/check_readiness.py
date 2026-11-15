@@ -30,8 +30,8 @@ def main():
         "setup_status": "NEEDS_FIX" if errors else "SETUP_READY",
         "python": sys.version.split()[0],
         "git_available": bool(shutil.which("git")),
-        "application_pipeline": "NOT_IMPLEMENTED",
-        "business_validation": "PENDING_REAL_SAMPLE_AND_RIGHTS",
+        "application_pipeline": "Run python scripts/knowledge.py verify for current implementation checks",
+        "business_validation": "PROFESSIONAL_REVIEW_AND_TEACHING_EFFECTIVENESS_PENDING",
         "errors": errors,
     }, indent=2))
     return 1 if errors else 0

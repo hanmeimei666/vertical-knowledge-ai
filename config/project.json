@@ -1,11 +1,17 @@
 {
   "project": "vertical-knowledge-ai",
-  "domain": "sports_education",
-  "first_delivery": "course_draft_with_sources",
-  "stage": "preparation",
-  "sample_status": "not_selected",
-  "model_provider": "unknown",
-  "external_processing": "not_enabled",
+  "domain": "youth_conditioning",
+  "first_delivery": "evidence_linked_knowledge_base_and_48_hour_course",
+  "stage": "draft_built_expert_review_pending",
+  "course_hours": 48,
+  "minutes_per_hour": 45,
+  "theory_hours": 18,
+  "practice_hours": 30,
+  "sample_directory": "data/raw/youth-conditioning",
+  "sample_status": "two_docx_ingested",
+  "model_provider": "not_used",
+  "external_model_processing": "not_used",
   "professional_reviewer": "unknown",
-  "publication": "not_enabled"
+  "publication": "not_enabled",
+  "deferred_domains": ["football_specialist", "sports_rehabilitation"]
 }
