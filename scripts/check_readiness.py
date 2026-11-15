@@ -9,6 +9,8 @@ REQUIRED = (
     "AGENTS.md", "PROJECT_BRIEF.md", "README.md", ".gitignore",
     "docs/启动配置与推进步骤.md", "docs/adr/0001-minimal-pipeline.md",
     "config/project.json", "config/asset_manifest.example.json",
+    "config/runtime.json", "config/domain_rules.json", "config/eval_queries.json",
+    "docs/系统流程设计与实现.md", "scripts/workflow.py", "scripts/pipeline.py", "scripts/serve.py",
 )
 
 
@@ -17,7 +19,7 @@ def main():
     for name in REQUIRED:
         if not (ROOT / name).is_file():
             errors.append(f"Missing file: {name}")
-    for name in ("config/project.json", "config/asset_manifest.example.json"):
+    for name in ("config/project.json", "config/asset_manifest.example.json", "config/runtime.json", "config/domain_rules.json", "config/eval_queries.json"):
         try:
             json.loads((ROOT / name).read_text(encoding="utf-8-sig"))
         except (OSError, ValueError) as exc:
@@ -30,7 +32,7 @@ def main():
         "setup_status": "NEEDS_FIX" if errors else "SETUP_READY",
         "python": sys.version.split()[0],
         "git_available": bool(shutil.which("git")),
-        "application_pipeline": "Run python scripts/knowledge.py verify for current implementation checks",
+        "application_pipeline": "Local governed workflow implemented; run workflow.py status and evaluate.py for runtime evidence",
         "business_validation": "PROFESSIONAL_REVIEW_AND_TEACHING_EFFECTIVENESS_PENDING",
         "errors": errors,
     }, indent=2))

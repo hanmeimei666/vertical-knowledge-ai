@@ -1,4 +1,28 @@
-# vertical-knowledge-ai · 青少年体能首期
+# vertical-knowledge-ai · 垂类知识系统
+
+本项目主要交付垂类大模型的配置与知识生产流程。青少年体能知识库和48课时课程是首个业务样本。
+
+## 系统设计与运行入口
+
+- **[总流程、22项需求追踪和八板块设计](docs/系统流程设计与实现.md)**
+- [本轮实现与验收报告](docs/系统流程实现验收报告.md)
+- [运行配置](config/runtime.json) · [领域规则](config/domain_rules.json) · [资料准入模板](config/import_manifest.example.json)
+
+已实现本机SQLite目录、原生资料准入、六项用途权限、证据包、规则蓝图、持久流程、三种导出、人工审核门禁、内部发布、来源撤回失效、审计、备份和鉴权只读API。默认不调用模型；Ollama/OpenAI适配接口通过契约测试，真实模型尚未验证。仅限单机可信写入操作者，非公网生产服务。
+
+```powershell
+Set-Location 'D:\gptproject\vertical-knowledge-ai'
+python scripts/workflow.py seed
+python scripts/workflow.py search '成熟度'
+python scripts/workflow.py run '蹲与髋铰链的教学观察' --key my-first-draft
+python scripts/workflow.py status
+python scripts/evaluate.py
+python -m unittest discover -s tests -v
+```
+
+成果路径和run_id由命令返回；审核人默认未配置，真实课程停在待审。API启动、模型可选配置、失败恢复、更新撤回与备份见八板块文档。data/outputs及实际原件、解析、运行库不会提交Git。
+
+## 首个业务样本
 
 首期优先构建青少年体能知识库及课程，足球和运动康复后置。课程采用用户要求的40–60课时范围内的 **48课时**：24次课，每次2课时；1课时45分钟，共36小时；理论18、实践/案例30。
 
@@ -28,7 +52,7 @@ python scripts/knowledge.py verify
 python -m unittest discover -s tests -v
 ```
 
-检索是中文双字片段/英文关键词匹配，返回知识卡及证据候选；没有接入自由生成问答或语义模型。无相关词时返回 `no_evidence`；关键词结果仍需结合限制核查。
+`knowledge.py`是前轮只读编辑资产检查脚本；检索是中文双字片段/英文关键词匹配，没有自由生成问答或语义模型。它直接读取编辑JSON，不执行运行库的撤回/准入状态。**实际生产和知识服务使用workflow.py/serve.py**，由运行库执行权限和版本过滤。无候选返回 `no_evidence`；关键词结果仍需结合限制核查。
 
 ## 原始样本与复现
 
@@ -45,7 +69,7 @@ python scripts/knowledge.py verify
 
 ## 当前交付边界
 
-已实现：DOCX原生结构提取、源指纹、32卡本地检索、24课结构化数据、Markdown渲染与验证。
+课程资产已实现：DOCX原生结构提取、源指纹、32卡编辑基线检索、24课结构化数据、Markdown渲染与验证。系统运行实现见前述总流程与验收报告。
 已完成初稿：课程讲解要点、活动、作业、评价、表单、样本教案。
 待验证：专家签审、动作示范复核、真实班级试教、学习效果与正式运营规则。
 未建设：视频、自动处方、康复、足球专项、微调、云部署和实时设备功能。

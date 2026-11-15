@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "domain": "youth_conditioning",
+  "knowledge_directory": "knowledge/youth-conditioning",
+  "raw_directory": "data/raw",
+  "database": "data/runtime/catalog.sqlite3",
+  "output_directory": "outputs/workflow",
+  "rules_file": "config/domain_rules.json",
+  "reviewer": null,
+  "retrieval": {"limit": 5, "minimum_score": 3},
+  "model": {
+    "backend": "extractive",
+    "name": "",
+    "endpoint": "http://127.0.0.1:11434/api/chat",
+    "api_key_env": "OPENAI_API_KEY",
+    "allow_external": false,
+    "timeout_seconds": 60,
+    "max_input_chars": 20000,
+    "max_output_tokens": 1200
+  },
+  "service": {"host": "127.0.0.1", "port": 8765, "token_env": "VKA_SERVICE_TOKEN"}
+}

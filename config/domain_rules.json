@@ -1,0 +1,13 @@
+{
+  "version": "youth-conditioning-1",
+  "audience": "成年体育教师和教练",
+  "output_kind": "teaching_draft",
+  "review_required": true,
+  "excluded_request_phrases": ["开具处方", "出具返训许可", "诊断我的", "自动控制设备"],
+  "limitations": [
+    "仅供成年从业者教研，不是针对具体儿童的训练或医疗处方。",
+    "知识卡为编辑归纳，原始证据、归纳和教学编排分别展示。",
+    "摘要或索引来源不支持未经全文核查的精确负荷处方。",
+    "专业审核人尚未指定时不能批准或正式发布。"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "version": "baseline-1",
+  "note": "小规模人工标注的开发回归集，不是独立盲测；不衡量专业结论正确性。修改时升版本。",
+  "top_k": 3,
+  "minimum_hit_rate": 0.8,
+  "queries": [
+    {"id":"Q01","query":"同龄学员的成熟度与训练经历","expected_any":["K03"]},
+    {"id":"Q02","query":"身体素养包括心理和社会维度吗","expected_any":["K02"]},
+    {"id":"Q03","query":"如何看待动作筛查的损伤预测","expected_any":["K10"]},
+    {"id":"Q04","query":"睡眠与恢复","expected_any":["K25","K26"]},
+    {"id":"Q05","query":"训练前胸痛与晕厥怎么办","expected_any":["K05"]},
+    {"id":"Q06","query":"热身与动作准备","expected_any":["K12"]},
+    {"id":"Q07","query":"测量误差与标准化复测","expected_any":["K09"]},
+    {"id":"Q08","query":"蹲与髋铰链的教学","expected_any":["K15"]},
+    {"id":"Q09","query":"WHO日常活动60分钟","expected_any":["K07"]},
+    {"id":"Q10","query":"未成年人保护与沟通","expected_any":["K06"]},
+    {"id":"Q11","query":"量子隧穿","expected_any":[]},
+    {"id":"Q12","query":"","expected_any":[]}
+  ]
+}
