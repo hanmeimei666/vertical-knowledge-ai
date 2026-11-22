@@ -1,13 +1,16 @@
 {
   "schema_version": 1,
-  "domain": "youth_conditioning",
-  "knowledge_directory": "knowledge/youth-conditioning",
+  "domain": "sports_education",
+  "knowledge_directory": "knowledge/shared",
   "raw_directory": "data/raw",
-  "database": "data/runtime/catalog.sqlite3",
-  "output_directory": "outputs/workflow",
+  "database": "data/workspaces/sports/catalog.sqlite3",
+  "output_directory": "outputs/sports",
   "rules_file": "config/domain_rules.json",
   "reviewer": null,
-  "retrieval": {"limit": 5, "minimum_score": 3},
+  "retrieval": {
+    "limit": 5,
+    "minimum_score": 3
+  },
   "model": {
     "backend": "extractive",
     "name": "",
@@ -18,5 +21,25 @@
     "max_input_chars": 20000,
     "max_output_tokens": 1200
   },
-  "service": {"host": "127.0.0.1", "port": 8765, "token_env": "VKA_SERVICE_TOKEN"}
+  "service": {
+    "host": "127.0.0.1",
+    "port": 8765,
+    "token_env": "VKA_SERVICE_TOKEN"
+  },
+  "workspace": {
+    "id": "sports",
+    "domains": [
+      "conditioning",
+      "football",
+      "rehabilitation"
+    ],
+    "facets": [
+      "population",
+      "domain",
+      "scenario",
+      "goal",
+      "media",
+      "applicability"
+    ]
+  }
 }

@@ -1,0 +1,19 @@
+{
+  "project": "vertical-knowledge-ai",
+  "domain": "youth_conditioning",
+  "first_delivery": "governed_vertical_ai_workflow_with_youth_conditioning_sample",
+  "stage": "local_workflow_built_model_and_professional_review_pending",
+  "course_hours": 48,
+  "minutes_per_hour": 45,
+  "theory_hours": 18,
+  "practice_hours": 30,
+  "sample_directory": "data/raw/youth-conditioning",
+  "sample_status": "two_docx_ingested",
+  "runtime_configuration": "config/runtime.json",
+  "system_design": "docs/系统流程设计与实现.md",
+  "model_provider": "extractive_default_optional_ollama_openai_adapters",
+  "external_model_processing": "not_used",
+  "professional_reviewer": "unknown",
+  "publication": "not_enabled",
+  "deferred_domains": ["football_specialist", "sports_rehabilitation"]
+}
