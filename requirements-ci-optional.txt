@@ -1,0 +1,4 @@
+# Lightweight versions already used by the local V0.3 verification environment.
+pypdf==6.7.4
+Pillow==12.0.0
+jsonschema==4.25.1

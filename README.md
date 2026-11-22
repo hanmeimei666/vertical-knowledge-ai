@@ -9,7 +9,9 @@ python scripts/platform_cli.py tools
 python scripts/smoke_platform.py
 python -m unittest discover -s tests -v
 ```
-默认config/runtime.json为共享体育工作空间，runtime.legacy.json保留旧配置。SQLite记录/修订/审计和可恢复任务沿用旧实现，独立新库不覆盖历史数据。本轮仅本地feat/general-sports-platform-v03分支，未经确认不推送。
+默认config/runtime.json为共享体育工作空间，runtime.legacy.json保留旧配置。SQLite记录/修订/审计和可恢复任务沿用旧实现，独立新库不覆盖历史数据。V0.3在feat/general-sports-platform-v03开发分支审查，正式main与v0.3.0发布须负责人批准。
+
+[持续开发与发布规范](CONTRIBUTING.md)：独立分支、小任务Commit、重要节点Push、Draft PR与逐Push CI。CI区分Linux/Windows标准库核心测试及轻量可选依赖测试；不安装OCR/ASR模型。云端同步及当前审查状态见[交付报告](docs/v03/云端同步交付报告.md)。
 
 ## 已实现与限制
 - 版本化对象Schema、多维词条及方向关系、同知识跨领域共享、AND/OR条件检索、源版本/权限EvidencePack。
