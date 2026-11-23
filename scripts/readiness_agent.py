@@ -1,4 +1,5 @@
 """Checkpointed, locally governed Request → Evidence → Blueprint → Artifact workflow."""
+from datetime import datetime, timezone
 from html import escape
 import multiprocessing
 from pathlib import Path
@@ -11,7 +12,7 @@ from platform_tools import _worker
 from readiness_media import run_media
 from readiness_model import SyntheticModel, validate_plan
 from readiness_retrieval import search
-from readiness_store import sha256
+from readiness_store import sha256, timestamp
 
 TRACKS = Path(__file__).resolve().parents[1] / 'config/course_tracks.json'
 FILES = {'lesson.md','lesson.html','lesson.json','activity.html','timeline.json','clip.mp4'}
@@ -94,7 +95,7 @@ def render_media(app, directory, timeline):
     inputs = ''.join(f'[v{i}][a{i}]' for i in range(len(timeline)))
     commands.append(f'{inputs}concat=n={len(timeline)}:v=1:a=1[v][a]')
     run_media('-loglevel','error',*args,'-filter_complex_threads','1','-filter_complex',';'.join(commands),
-              '-map','[v]','-map','[a]','-c:v','mpeg4','-c:a','aac','-y',directory/'clip.mp4')
+              '-map','[v]','-map','[a]','-c:v','libx264','-threads','1','-c:a','aac','-movflags','+faststart','-y',directory/'clip.mp4')
     (directory/'timeline.json').write_text(encode(timeline)+'\n',encoding='utf8')
 
 
@@ -106,7 +107,8 @@ def lesson_html(title, body):
 def render_documents(directory, run, review_status, timeline):
     steps = run['steps']
     blueprint = steps['blueprint']
-    entries = steps['evidence']['entries']
+    by_id = {e['knowledge']['id']:e for e in steps['evidence']['entries']}
+    entries = [by_id[id_] for id_ in blueprint['units']]
     title = blueprint['course']['title'] + ' | Synthetic'
     plain = [f'# {title}',f'Run {run["id"]} · {review_status}']
     blocks = []
@@ -138,6 +140,9 @@ def ensure_current(app, run, *, public=False):
         current = app.record('ReadinessUnit',e['knowledge']['id'])
         if not current or current['state']!='approved' or current['revision']!=e['version']:
             raise PermissionError('Evidence unit version changed')
+        expiry = current['body'].get('valid_until')
+        if expiry and timestamp(expiry) <= datetime.now(timezone.utc):
+            raise PermissionError('Evidence unit expired')
         for ref in e['references']:
             app.evidence_span(ref,'adapt')
             if public:
