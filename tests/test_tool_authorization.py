@@ -86,7 +86,7 @@ class ToolAuthorizationChecks(unittest.TestCase):
     def test_cached_invocation_cannot_bypass_revocation(self):
         self.app.create_fixture('.txt','SYN');payload=self.payload('SYN')
         result=self.app.tools.invoke('parse.txt',payload,{'internal_parse':True},'cached')
-        self.assertEqual(result['state'],'completed')
+        self.assertEqual(result['state'],'completed',result.get('error'))
         self.app.withdraw('SYN','revoked')
         self.denied(self.app.tools.invoke('parse.txt',payload,{'internal_parse':True},'cached'),'admitted')
 
@@ -123,6 +123,12 @@ class ToolAuthorizationChecks(unittest.TestCase):
         self.assertEqual(first['state'],'candidate')
         self.assertEqual(self.app.extract(manifest,'stable-extraction'),first)
         self.assertEqual(self.app.asset('SYN')['revision'],first['source_revision'])
+
+    def test_parser_accepts_equivalent_root_path_without_weakening_file_binding(self):
+        self.app.create_fixture('.txt','SYN');payload=self.payload('SYN')
+        payload['root']=str(self.root/'config'/'..')
+        result=self.app.tools.invoke('parse.txt',payload,{'internal_parse':True},'root-alias')
+        self.assertEqual(result['state'],'completed',result.get('error'))
 
 
 if __name__=='__main__':unittest.main()

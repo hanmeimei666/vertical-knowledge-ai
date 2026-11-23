@@ -71,11 +71,13 @@ class Platform(Pipeline):
             a=self._authorize_source(payload['source'],permissions|{'internal_parse'})
             expected={'root':str(self.root),'path':a['body']['path'],'raw_directory':self.config['raw_directory'],
                 'source':a['id'],'revision':self._extraction_revision(a)}
-            if payload!=expected or source_ids not in (None,[a['id']]):raise PermissionError('Parser payload binding mismatch')
+            bound=dict(payload,root=str(Path(payload['root']).resolve()))
+            if bound!=expected or source_ids not in (None,[a['id']]):raise PermissionError('Parser payload binding mismatch')
         elif adapter=='export_draft':
             run=self.get_run(payload['run']['id'])
             if run['state'] in ('invalidated','blocked'):raise PermissionError('Export run is not current')
-            if payload!={'root':str(self.root),'config':str(self.config_path.relative_to(self.root)),'run':run}:
+            bound=dict(payload,root=str(Path(payload['root']).resolve()))
+            if bound!={'root':str(self.root),'config':str(self.config_path.relative_to(self.root)),'run':run}:
                 raise PermissionError('Export payload binding mismatch')
             refs=[r for e in run['steps'].get('evidence',{}).get('entries',[]) for r in e['references']]
             if not refs:raise PermissionError('Export source references required')
