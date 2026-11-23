@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Request",
+  "type": "object",
+  "required": [
+    "id",
+    "schema_version",
+    "version",
+    "goal",
+    "project",
+    "domains",
+    "populations",
+    "scenarios",
+    "outputs",
+    "evidence",
+    "available_tools",
+    "restrictions"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_version": {
+      "enum": [
+        "0.3"
+      ]
+    },
+    "version": {
+      "type": "integer"
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "updated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project": {
+      "type": "object"
+    },
+    "domains": {
+      "type": "array",
+      "items": {}
+    },
+    "populations": {
+      "type": "array",
+      "items": {}
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {}
+    },
+    "outputs": {
+      "type": "array",
+      "items": {},
+      "minItems": 1
+    },
+    "evidence": {
+      "type": "object"
+    },
+    "available_tools": {
+      "type": "array",
+      "items": {}
+    },
+    "restrictions": {
+      "type": "object"
+    }
+  }
+}

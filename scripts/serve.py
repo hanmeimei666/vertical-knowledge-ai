@@ -7,6 +7,7 @@ import os
 from urllib.parse import parse_qs, urlsplit
 
 from pipeline import Pipeline, WorkflowError, ROOT
+from platform_store import Platform
 
 
 def handler(root, config, token):
@@ -40,12 +41,19 @@ def handler(root, config, token):
                 return self.send(400, {"error": "Request too long"})
             params = parse_qs(parts.query)
             try:
-                with Pipeline(root=root, config=config) as app:
+                candidate=Pipeline(root=root,config=config)
+                generic=bool(candidate.records('KnowledgeUnit'))
+                if generic:
+                    candidate.db.close()
+                    candidate=Platform(root=root,config=config)
+                with candidate as app:
                     if parts.path == "/search":
                         query = params.get("q", [""])[0]
                         if not 1 <= len(query.strip()) <= 2000:
                             return self.send(400, {"error": "Query must contain 1..2000 characters"})
-                        return self.send(200, app.evidence(query))
+                        filters=json.loads(params.get('filters',['{}'])[0])
+                        result=app.retrieve(query,filters,params.get('mode',['AND'])[0]) if generic else app.evidence(query)
+                        return self.send(200, result)
                     if parts.path.startswith("/runs/"):
                         run_id = parts.path.removeprefix("/runs/")
                         run = app.get_run(run_id)

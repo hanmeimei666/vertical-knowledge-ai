@@ -1,0 +1,2 @@
+# Core runtime and tests use Python 3.11 standard library only.
+# No models, OCR/ASR engines or cloud SDKs are installed in the core CI jobs.

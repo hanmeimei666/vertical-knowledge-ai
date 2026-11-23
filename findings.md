@@ -1,5 +1,21 @@
 # 现状发现
 
+2026-11-23最终核查：负责人身份确认后main-review-and-ci已保存，Ruleset API id=27876050/enforcement=active，精确main、无旁路、PR及讨论门禁、0额外批准，三检查integration_id=15368。此前身份等待与连接器403属于历史过程，已用浏览器完成设置和PR说明更新，未扩大连接器权限。
+
+## 第二轮工程审查
+授权方案已落实：fixture_origin来自固定生成器，使用现有records/revisions/audit，不引入新SQL迁移；所有工具由数据库来源状态/哈希/权限及适配器payload绑定授权，直接调用和缓存复用均重新检查。工具之外的旧底层函数保留为本地可信开发接口；不声称抵抗可任意修改本地代码/库的操作者。旧自声明合成清单不可追认，须重建固定测试样本；没有真实资料导入扩权。
+基线工作区干净。register直接保留外部可变定义并按ID覆盖；health/discover也暴露内部定义。invoke独立入口仅信任调用者rights，未执行data_sensitivity。extract的synthetic字段也由manifest提供，不能作为来源证明；export入口同样仅传adapt=True。需绑定数据库来源记录、可信生成证据、文件哈希及当前状态/权限，统一在invoke执行前和幂等返回前检查。
+GitHub Rulesets读取为空；连接器读取协作者权限403 Resource not accessible by integration。尚未配置任何服务端规则，后续尝试已登录网页。
+浏览器已进入新建分支Ruleset，准备Active、精确refs/heads/main、无旁路、PR必须、0额外批准、解决对话、禁止删除/强推，并添加三个实际Actions检查。当前仍在表单，未保存，不作已配置声明。界面翻译会改变按钮名称，一次Active定位未命中后改为读取实际中文选项。
+三个检查已通过键盘选择加入，来源为GitHub Actions；鼠标选择在翻译后的列表不生效，不重复盲点。Create触发GitHub Confirm access身份弹窗，需用户自行完成（已请求并保留页面）。保存前API仍为空。PR说明连接器更新403，不能冒称更新成功。c0c0935的两个CI均全部通过；后续许可文档14aa826的CI亦成功。
+
+## 云端同步核查
+
+2026-11-23更新：开发分支已正常推送，58c296120a6799234b6e16b19386a0a8253c77c1远端一致；Push/PR两次Actions均success。Draft PR #1保持草稿、未合并（https://github.com/hanmeimei666/vertical-knowledge-ai/pull/1）。连接器创建PR返回403，改用已登录浏览器完成，再经连接器读取核验；未扩大权限。已建立CI/CONTRIBUTING/PR模板，服务端Ruleset未配置；main及正式Tag不变。
+
+以下为初始核查：
+远端开发分支不存在，main=14d1f14；本地051aa23包含V0.3。GitHub连接器已可读取仓库，权限push/admin，当前visibility=public（与早期私有记录不同，本轮不调整）。暂无Actions/依赖清单；核心标准库，PDF/图片测试按依赖存在执行，应分核心与轻量可选CI，不装OCR/ASR模型。
+
 ## 第4轮导入与GitHub核查
 - 用户要求GitHub描述完整，并保证后续真实知识资源可随时导入跑通。
 - 当前admit仅解析，add-unit须逐条编写JSON；缺少批次准备、候选校订、整批验证和独立导入示例。
@@ -66,3 +82,11 @@
 - 9项自动测试通过，包含引用断链、非法本地坐标、错误课时、无答案和空样本保护。
 - 两份样本副本SHA-256与D:/gptproject原件完全一致；本地成果链接无缺失。
 - 课程与知识卡已渲染；CLI只做本地关键词检索与课次读取，不生成个体训练处方。
+
+## V0.3 2026-11-22
+Phase0通过：现有40测试、26代码/测试/设计文件审计；主库备份与历史指纹已保存；只在本地指定分支与隔离库开发。Phase1更新当前定位，历史内容不变。
+
+V0.3 Phase4–6 complete：原生9格式通过统一路由的持久演示，PDF文本/图片元数据另有实际依赖测试；多维AND/OR、双领域共享与关系查询、统一Request/蓝图/Artifact及工具导出通过8项集成测试。进入Phase7。OCR/ASR/视频/MCP/语义检索仅planned，未声称可用。
+
+## V0.3 最终本地验收
+Phase0–7已完成本地工程首版：49测试通过、旧verify通过、模拟9格式路由→共享检索→蓝图→三格式成果PASS。历史资产指纹与原库四表逐行无改动，副本迁移回滚通过。OCR/ASR/视频等仍planned，复杂多模态/真实模型未验证。无远端推送，不导入新真实内容。见docs/v03/验收报告.md。

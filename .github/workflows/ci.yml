@@ -1,0 +1,61 @@
+name: V0.3 validation
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validation:
+    name: ${{ matrix.os }} / ${{ matrix.dependencies }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            dependencies: core
+          - os: windows-latest
+            dependencies: core
+          - os: ubuntu-latest
+            dependencies: optional
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.11'
+      - name: Install core requirements (stdlib only)
+        run: python -m pip install -r requirements-ci-core.txt
+      - name: Install lightweight optional test dependencies
+        if: matrix.dependencies == 'optional'
+        run: python -m pip install -r requirements-ci-optional.txt
+      - name: Check tracked files
+        run: python scripts/check_tracked_files.py
+      - name: Run unittest suite
+        run: python -m unittest discover -s tests -v
+      - name: Run generated V0.3 end-to-end smoke
+        run: python scripts/smoke_platform.py
+      - name: Verify historical course structure
+        run: python scripts/knowledge.py verify
+      - name: Validate optional dependencies and JSON Schemas
+        if: matrix.dependencies == 'optional'
+        run: |
+          python -c "import pypdf, PIL, jsonschema; import json; from pathlib import Path; [jsonschema.Draft202012Validator.check_schema(json.loads(p.read_text(encoding='utf-8'))) for p in Path('schemas/v03').glob('*.json')]"
