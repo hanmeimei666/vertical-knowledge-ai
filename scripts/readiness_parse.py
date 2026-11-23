@@ -3,8 +3,29 @@ import hashlib
 import re
 
 from pipeline import digest, inside
-from readiness_media import ParserRegistry
+from readiness_media import ParserRegistry, native, pdf_pages, pdf_parts
 from readiness_store import sha256
+
+
+def read_pdf_chunks(app, source, path, part_id):
+    segments = []
+    try:
+        chunks = list(pdf_parts(path))
+    except ImportError:
+        from platform_parsers import Unavailable
+        raise Unavailable('pypdf is not installed') from None
+    for start, end in chunks:
+        app.authorize(source['id'],'internal_parse',revision=source['revision'])
+        key = digest([part_id,start,end])
+        saved = app.record('ParseChunk',key)
+        if saved:
+            blocks = saved['body']['segments']
+        else:
+            blocks = pdf_pages(path,start,end)
+            app.put('ParseChunk',key,dict(source=source['id'],revision=source['revision'],
+                                        first_page=start+1,last_page=end,segments=blocks),'completed')
+        segments.extend(blocks)
+    return segments
 
 
 def parse(app, source_id, key, stages=('native',), retry=False, registry=None):
@@ -39,7 +60,10 @@ def parse(app, source_id, key, stages=('native',), retry=False, registry=None):
             try:
                 directory = location / name
                 directory.mkdir(exist_ok=True)
-                segments = adapter(path,source_id,source['revision'],directory)
+                if adapter is native and path.suffix=='.pdf':
+                    segments = read_pdf_chunks(app,source,path,part_id)
+                else:
+                    segments = adapter(path,source_id,source['revision'],directory)
                 app.authorize(source_id,'internal_parse',*permissions,revision=source['revision'])
                 for i,span in enumerate(segments):
                     span['segment_id'] = f'{part_id[:16]}-{i+1}'

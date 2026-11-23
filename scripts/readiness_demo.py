@@ -131,15 +131,17 @@ def serve(workbench, port=8766):
 
         def do_POST(self):
             try:
+                length = int(self.headers.get('Content-Length',0))
+                if not 1 <= length <= 16384:
+                    raise ValueError('Request size outside local limit')
+                self.connection.settimeout(10)
+                payload = self.rfile.read(length)
                 origin = self.check_host()
                 if (self.headers.get('Origin')!=origin
                         or not secrets.compare_digest(self.headers.get('X-Workbench-Session',''),key + '.' + workbench.root.name)
                         or self.headers.get_content_type()!='application/json'):
                     raise PermissionError('Same-origin operator session required')
-                length = int(self.headers.get('Content-Length',0))
-                if not 1 <= length <= 16384:
-                    raise ValueError('Request size outside local limit')
-                body = json.loads(self.rfile.read(length))
+                body = json.loads(payload)
                 if not isinstance(body,dict):
                     raise ValueError('Expected an object')
                 if self.path=='/api/reset' and not body:
@@ -154,6 +156,15 @@ def serve(workbench, port=8766):
                             raise ValueError('Unknown generated sample')
                         result = parse(app,body['id'],existing['id'],existing['body']['stages'],retry=True)
                         return self.json(200,result)
+                    if self.path=='/api/unit-review' and set(body)=={'unit','decision'}:
+                        unit = app.record('ReadinessUnit',body['unit'])
+                        if (not unit or body['decision'] not in {'approved','rejected','withdrawn'}):
+                            raise ValueError('Unknown unit or decision')
+                        for ref in unit['body']['references']:
+                            app.evidence_span(ref)
+                        revision = app.review_unit(body['unit'],'synthetic-local-operator',body['decision'],
+                                                   'Local demonstration review of generated fixtures')
+                        return self.json(200,{'unit':body['unit'],'revision':revision})
                     if self.path=='/api/review' and set(body)=={'run','decision'} and body['decision'] in {'approved','withdrawn','rejected'}:
                         result = review(app,body['run'],reviewer='synthetic-local-operator',decision=body['decision'],
                                         note='Local demonstration review of generated fixtures')

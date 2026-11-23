@@ -3,8 +3,7 @@ from pathlib import Path
 import shutil
 
 from pipeline import ROOT, load
-from readiness_agent import produce
-from readiness_media import ffmpeg, Unavailable
+from readiness_agent import artifact, produce
 from readiness_parse import parse, span_ref
 from readiness_retrieval import search
 from readiness_store import Readiness, sha256
@@ -21,6 +20,7 @@ RECORDS = [
     ('denied','football','coach','youth','field'),
     ('revoked','football','coach','youth','field'),
     ('expired','football','coach','youth','field'),
+    ('pending','football','coach','youth','field'),
     ('conflict-upper','conditioning','educator','youth','classroom'),
     ('conflict-lower','conditioning','educator','youth','classroom'),
 ]
@@ -61,7 +61,8 @@ def seed(app, optional=False):
         if id_=='expired':
             unit['valid_until']='2000-01-01T00:00:00+00:00'
         app.save_unit(unit)
-        app.review_unit(id_,'synthetic-operator','approved','Structural fixtures only')
+        if id_!='pending':
+            app.review_unit(id_,'synthetic-operator','approved','Structural fixtures only')
         if id_=='revoked':
             grant(app,source,(),state='revoked')
         elif id_=='denied':
@@ -164,7 +165,22 @@ def demo_run(root,optional=False):
             if track=='football' and optional:
                 request['timeline']=[{'asset':'media-mp4','start_ms':0,'end_ms':320},
                                      {'asset':'media-mov','start_ms':160,'end_ms':560}]
-            runs.append(produce(app,request,'demo-'+track))
+            run = produce(app,request,'demo-'+track)
+            runs.append(run)
+            if run['state']=='draft_ready':
+                expected = {'lesson.md','lesson.html','lesson.json','activity.html'}
+                if request.get('timeline'):
+                    expected |= {'clip.mp4','timeline.json'}
+                if set(run['steps']['artifacts'])!=expected:
+                    raise ValueError('Incomplete artifact contract for '+track)
+                for name, contract in run['steps']['artifacts'].items():
+                    if sha256(artifact(app,run['id'],name))!=contract['sha256']:
+                        raise ValueError('Artifact hash mismatch for '+name)
+        if optional:
+            mov = next(row for row in data['parsed'] if row['id']=='media-mov')['result']
+            subtitles = next(part for part in mov['parts'] if part['stage']=='asr')['segments']
+            if not subtitles or not all(s['file'].endswith('.vtt') for s in subtitles):
+                raise ValueError('Missing timestamped subtitle witness')
         report = dict(synthetic=True,root=str(root),inputs=data,benchmark=metrics,
-                      runs=runs,status='PASS' if all(r['state']=='draft_ready' for r in runs) and not metrics['unauthorized'] else 'FAIL')
+                      runs=runs,status='PASS' if all(r['state']=='draft_ready' for r in runs) and not metrics['unauthorized'] and not metrics['false_retrievals'] else 'FAIL')
     return report

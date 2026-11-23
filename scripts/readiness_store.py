@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import re
+import shutil
 import uuid
 
 from pipeline import RIGHTS, inside, now
@@ -28,7 +29,8 @@ def timestamp(value):
 class Readiness(Platform):
     """The local operator owns the control plane; public requests only select records."""
 
-    def __init__(self, root=None, config='config/readiness.json'):
+    def __init__(self, root=None, config='config/readiness.json', *, authorized_local_intake=False):
+        self.authorized_local_intake = authorized_local_intake
         super().__init__(root, config)
 
     def record(self, kind, id_):
@@ -56,12 +58,36 @@ class Readiness(Platform):
                       source_type=suffix.lstrip('.'), created_at=now(), imported_at=now(),
                       sensitivity='none', mode='synthetic', path=path.relative_to(self.root).as_posix(),
                       sha256=sha256(path), version=1 if prior is None else prior['body']['version'] + 1)
-        return self._register_generated(id_, source)
+        return self._register(id_, source)
 
-    def _register_generated(self, id_, source):
-        """Code-only registration from the fixed generator; no CLI or HTTP accepts file paths."""
+    def register_local_source(self,id_,staged_name,metadata):
+        """Trusted operator interface for the next phase, disabled in all shipped launchers."""
+        from readiness_media import SUFFIXES
+        if not self.authorized_local_intake:
+            raise PermissionError('Authorized local intake is disabled for this workspace')
+        if (not re.fullmatch(r'[A-Za-z0-9_-]{1,60}',id_) or set(metadata)!=SOURCE_FIELDS
+                or any(not isinstance(v,str) or not v.strip() for v in metadata.values())):
+            raise ValueError('Incomplete source metadata')
+        timestamp(metadata['created_at'])
+        raw = inside(self.root, self.config['raw_directory'])
+        staging = inside(raw,'staging')
+        path = inside(staging,staged_name)
+        if path.parent != staging or path.suffix.lower() not in SUFFIXES:
+            raise ValueError('Select one supported local staged file')
+        self.path({'path':path.relative_to(self.root).as_posix()})
+        prior = self.record('ReadinessSource',id_)
+        directory = raw / uuid.uuid4().hex
+        directory.mkdir()
+        copy = directory / ('original' + path.suffix.lower())
+        shutil.copyfile(path,copy)
+        return self._register(id_,dict(metadata,imported_at=now(),mode='authorized-local',
+                                       path=copy.relative_to(self.root).as_posix(),sha256=sha256(copy),
+                                       version=prior['body']['version']+1 if prior else 1))
+
+    def _register(self, id_, source):
         path = self.path(source)
-        if source['mode'] != 'synthetic' or not SOURCE_FIELDS <= source.keys() or sha256(path) != source['sha256']:
+        if (source['mode'] not in {'synthetic','authorized-local'} or not SOURCE_FIELDS <= source.keys()
+                or sha256(path) != source['sha256']):
             raise ValueError('Incomplete source origin')
         duplicates = [r for r in self.records('ReadinessSource')
                       if r['id'] != id_ and r['body']['sha256'] == source['sha256']]
@@ -101,7 +127,8 @@ class Readiness(Platform):
             raise PermissionError('Source, version or authorization not current')
         b = source['body']
         grant = self.record('SourceAuthorization', source_id)['body']
-        if (b['mode'] != 'synthetic' or b['sensitivity'] != 'none' or grant['source_sha256'] != b['sha256']
+        modes = {'synthetic','authorized-local'} if self.authorized_local_intake else {'synthetic'}
+        if (b['mode'] not in modes or b['sensitivity'] != 'none' or grant['source_sha256'] != b['sha256']
                 or grant['source_version'] != b['version'] or not grant['reviewer'] or not grant['proof']
                 or set(scopes) - set(PERMISSIONS) or any(grant['scopes'].get(s) is not True for s in scopes)):
             raise PermissionError('Missing independent source permission')

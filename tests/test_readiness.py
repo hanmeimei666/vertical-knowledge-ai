@@ -1,4 +1,5 @@
 """Synthetic unit, integration, abnormal-state and compatibility acceptance."""
+from importlib.util import find_spec
 from pathlib import Path
 import sys
 import tempfile
@@ -10,7 +11,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
 from platform_migrate import rollback
 from readiness_agent import artifact, produce, publish, review, request_contract
 from readiness_demo_data import evaluate, grant, isolate, seed, GRANT
-from readiness_media import ParserRegistry, Unavailable, check_archive, ffmpeg
+from readiness_media import ParserRegistry, Unavailable, check_archive
 from readiness_model import SyntheticModel
 from readiness_parse import correct_span, parse, span_ref
 from readiness_retrieval import search
@@ -235,6 +236,57 @@ class ReadinessTests(unittest.TestCase):
         grant(self.app,'s',(),state='revoked')
         with self.assertRaises(PermissionError):
             artifact(self.app,run['id'],'lesson.html')
+
+    def stage(self,name):
+        raw=self.root/self.app.config['raw_directory']/'staging'
+        raw.mkdir(parents=True,exist_ok=True)
+        return raw/name
+
+    def stage_metadata(self,source_type):
+        return dict(title='Synthetic staged manifest',provider='Generated test',source_type=source_type,
+                    owner='operator',sensitivity='none',created_at='2026-01-01T00:00:00+00:00')
+
+    def test_staged_operator_interface_disabled_by_default(self):
+        staged=self.stage('synthetic.txt')
+        staged.write_text('Synthetic operator staging verification',encoding='utf8')
+        meta=self.stage_metadata('txt')
+        with self.assertRaises(PermissionError):
+            self.app.register_local_source('staged',staged.name,meta)
+        with Readiness(self.root,authorized_local_intake=True) as operator:
+            registered=operator.register_local_source('staged',staged.name,meta)
+            self.assertEqual(operator.source_status(registered),'pending_review')
+            self.assertNotEqual(operator.path(registered['body']),staged)
+            self.assertEqual(sha256(operator.path(registered['body'])),sha256(staged))
+            grant(operator,'staged',('retrieve',))
+            self.assertIn('Synthetic',parse(operator,'staged','staged-parse')['parts'][0]['segments'][0]['extracted_content'])
+        with self.assertRaises(PermissionError):
+            self.app.authorize('staged','retrieve')
+
+    @unittest.skipUnless(find_spec('pypdf'),'PDF chunk tests run in the optional job')
+    def test_pdf_page_checkpoints_and_exact_locator(self):
+        from pypdf import PdfWriter
+        staged=self.stage('synthetic.pdf')
+        writer=PdfWriter()
+        for i in range(41):
+            writer.add_blank_page(width=100+i,height=80)
+        writer.write(staged)
+        with Readiness(self.root,authorized_local_intake=True) as operator:
+            operator.register_local_source('staged',staged.name,self.stage_metadata('pdf'))
+            grant(operator,'staged',('retrieve',))
+            from unittest.mock import patch
+            from readiness_media import pdf_pages
+            def interrupt(path,start,end):
+                if start>=20:
+                    raise ValueError('Synthetic page processing interruption')
+                return pdf_pages(path,start,end)
+            with patch('readiness_parse.pdf_pages',side_effect=interrupt):
+                with self.assertRaises(ValueError):
+                    parse(operator,'staged','document')
+            self.assertEqual(len(operator.records('ParseChunk')),1)
+            result=parse(operator,'staged','document',retry=True)
+            self.assertEqual(len(operator.records('ParseChunk')),3)
+            self.assertEqual([s['locator']['page'] for s in result['parts'][0]['segments']],list(range(1,42)))
+            self.assertEqual(result['parts'][0]['segments'][-1]['locator']['media_box'],[0,0,140,80])
 
     def test_backup_restore_isolated(self):
         self.source()

@@ -124,6 +124,38 @@ def check_archive(path):
             names.add(name)
 
 
+def pdf_parts(path, page_size=20):
+    from pypdf import PdfReader
+    reader = PdfReader(path)
+    for start in range(0,len(reader.pages),page_size):
+        yield start, min(start+page_size,len(reader.pages))
+
+
+def pdf_pages(path, start, end):
+    from pypdf import PdfReader
+    reader = PdfReader(path)
+    spans = []
+    for index in range(start,end):
+        page = reader.pages[index]
+        box = [float(v) for v in page.mediabox]
+        content = page.extract_text() or ''
+        spans.append(segment('pypdf-native',content,{'type':'page','page':index+1,'media_box':box,
+                            'rotation':page.rotation},metadata={'ocr_required':not bool(content.strip())}))
+    return spans
+
+
+def asr_vtt(path, spans):
+    def timecode(ms):
+        sec, milli = divmod(ms,1000)
+        mins, sec = divmod(sec,60)
+        hour, mins = divmod(mins,60)
+        return f'{hour:02}:{mins:02}:{sec:02}.{milli:03}'
+    rows = ['WEBVTT','']
+    for item in spans:
+        loc = item['locator']
+        rows += [f"{timecode(loc['start_ms'])} --> {timecode(loc['end_ms'])}",item['extracted_content'],'']
+    path.write_text('\n'.join(rows)+'\n',encoding='utf8')
+
 def native(path, source, revision, output):
     if path.suffix in {'.docx', '.pptx', '.xlsx'}:
         check_archive(path)
@@ -194,6 +226,11 @@ def synthetic_asr(path, source, revision, output):
             i += 1
         if current is not None:
             spans.append(segment('synthetic-asr','Synthetic tone',{'track':0,'start_ms':20*current,'end_ms':20*i}))
+    if path.name == 'asr-audio.wav':
+        cues = output/'captions.vtt'
+        asr_vtt(cues,spans)
+        for span in spans:
+            span['file'] = cues.name
     return spans
 
 

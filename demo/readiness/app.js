@@ -49,7 +49,14 @@ async function refresh() {
     const meta=el('td');meta.append(detail(s.sha256.slice(0,12)+'…', {sha256:s.sha256,format:s.format,authorization:s.authorization}));row.append(meta);return row;});
   by('source-rows').replaceChildren(...rows);
   by('parse-source').replaceChildren(...state.parses.map(r=>option(r.body.source,r.body.source+' · '+r.body.stages.join(' / '))));
-  by('units').replaceChildren(...state.units.map(u=>detail(u.body.title+' · '+(labels[u.state]||u.state),u)));
+  by('units').replaceChildren(...state.units.map(u=>{
+    const card=detail(u.body.title+' · '+(labels[u.state]||u.state),u);
+    if(u.body.references && u.state==='review_pending'){
+      const button=el('button','批准合成候选');card.append(button);
+      handle(button,'click',async()=>{await api('/api/unit-review',{unit:u.id,decision:'approved'});await refresh();});
+    }
+    return card;
+  }));
   by('relations').textContent=JSON.stringify(state.relations,null,2);
   by('search-domain').replaceChildren(option('','全部'),...Object.entries(state.courses).map(([id,course])=>option(id,course.title)));
   const previousTrack=by('track').value;

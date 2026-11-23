@@ -209,6 +209,9 @@ def produce(app, request, key, *, provider=None, retry=False, timeout=20):
                 run.update(state='blocked',error='no_evidence_or_unresolved_conflict')
                 app.save_run(run)
                 return run
+            if any(app.record('ReadinessSource',ref['source'])['body']['mode']!='synthetic'
+                   for e in pack['entries'] for ref in e['references']):
+                raise PermissionError('Synthetic production mode requires generated inputs')
             steps['timeline'] = media_inputs(app,request.get('timeline',[]))
             steps['evidence'] = pack
             run.update(state='evidence_ready',error=None)

@@ -38,6 +38,11 @@ class WorkbenchTests(unittest.TestCase):
                     request={'request':{'track':'football','query':'shared'},'key':'http-test'}
                     self.assertEqual(send('/api/run',request,{'Content-Type':'application/json'})[0],403)
                     headers={'Content-Type':'application/json','Origin':base,'X-Workbench-Session':state['session']}
+                    candidate=next(u for u in state['units'] if u['id']=='pending')
+                    self.assertEqual(candidate['state'],'review_pending')
+                    self.assertFalse(json.loads(send('/api/search?q=pending')[1])['entries'])
+                    self.assertEqual(send('/api/unit-review',{'unit':'pending','decision':'approved'},headers)[0],200)
+                    self.assertEqual(len(json.loads(send('/api/search?q=pending')[1])['entries']),1)
                     status, payload=send('/api/run',request,headers)
                     self.assertEqual(status,200)
                     run=json.loads(payload)
