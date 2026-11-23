@@ -30,3 +30,5 @@ python scripts/check_tracked_files.py
 ## 操作者与后续接入
 
 合成数据生成函数与授权登记是两个操作。扩展 ParserRegistry 或 ModelProvider 只需受信任本地代码。打开真实工作区前，由负责人确定第一批来源范围、可信授权记录和专家审查流程，使用隔离库逐份登记，并监督专业任务的准确率、适用性和内容质量。公网模型、真实素材的批量入口和外发发布目前未启用。
+
+未来操作员工作区使用Readiness(root,authorized_local_intake=True)，从隔离raw/staging选择单个文件，register_local_source登记，record_grant独立审批后parse，再整理并审核知识单元后produce；这个开关不向HTTP或普通请求开放。关闭的工作区不能读取此类来源或成果。输入模式与ModelProvider名称写入产物，默认模型仍为SyntheticModel；本阶段回归只使用生成的暂存字节，不允许按此步骤自行导入真实资料。

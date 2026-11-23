@@ -1,5 +1,7 @@
 # 现状发现
 
+V0.4实际缺口修复：readiness_agent.produce原先硬编码synthetic校验，与已存在的register_local_source/authorized_local_intake接口不衔接。现以可信操作员工作区策略授权，所有证据和权限照常重查；88测试含生成暂存文件完整产出。默认演示仍关闭真实接入，未新增HTTP扩权接口。
+
 V0.4复核发现：现有分支799fbc8已具备87测试和叠加Draft #2，PR的base为V0.3分支3359c2d，未合并main。已有实现不重复开发。本轮发现根定义卡仍写V0.3、起始审计未分列五类状态，现已补齐。真实Tesseract/ASR/向量和模型效果与合成适配验证分别标记；16格式full smoke与实际交互课件反馈已独立复验。
 
 2026-11-23最终核查：负责人身份确认后main-review-and-ci已保存，Ruleset API id=27876050/enforcement=active，精确main、无旁路、PR及讨论门禁、0额外批准，三检查integration_id=15368。此前身份等待与连接器403属于历史过程，已用浏览器完成设置和PR说明更新，未扩大连接器权限。

@@ -32,3 +32,9 @@
 浏览器独立复核：以python scripts/readiness_demo.py --full --no-browser --port 8770启动，实际选择足球线、拼接视频并生产Run 474e6c33f55548108bc3571e6ff05d52，页面列出lesson.md/html/json、activity.html、clip.mp4和timeline.json。独立课件提交locator返回“The locator identifies the source coordinate.”，不是静态截图演示。
 
 当前定义卡和协作入口已更新到V0.4，能力清单按五种状态分列。本次状态补录作为后续文档提交正常Push；最新HEAD、远端与PR头SHA及其CI在交付消息和本地data/v04-audit核验，不将报告自引用SHA写成自身提交。
+
+## 授权暂存与生产衔接回归
+
+复核发现生产层曾固定只接受synthetic来源，虽可登记/解析暂存来源但无法进入内容生产。现已按受信操作员的authorized_local_intake策略衔接；默认启动入口仍关闭，仅显式操作员工作区可使用经独立审批的本地来源，所有证据、专项处理、版本和审核检查仍执行。输出保留authorized-local输入模式和ModelProvider名称，未把来源改标为Synthetic或冒称真实模型。
+
+新增测试仅写入程序生成的“无专业内容”暂存字节，完整走登记→授权→解析→知识审核→产出，并确认默认关闭工作区无法读取成果或生产。测试总数由87增至88，完整测试、16格式smoke、V0.3兼容及文件审计通过；日志data/v04-audit/operator-flow-validation.txt。本轮未导入真实资料。

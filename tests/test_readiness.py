@@ -288,6 +288,32 @@ class ReadinessTests(unittest.TestCase):
             self.assertEqual([s['locator']['page'] for s in result['parts'][0]['segments']],list(range(1,42)))
             self.assertEqual(result['parts'][0]['segments'][-1]['locator']['media_box'],[0,0,140,80])
 
+    def test_staged_generated_bytes_complete_operator_production(self):
+        import json
+        staged=self.stage('synthetic.txt')
+        staged.write_text('Synthetic staged-case structure only; no professional content',encoding='utf8')
+        with Readiness(self.root,authorized_local_intake=True) as operator:
+            operator.register_local_source('staged',staged.name,self.stage_metadata('txt'))
+            grant(operator,'staged',('retrieve','adapt'))
+            extraction=parse(operator,'staged','stage-flow')
+            part=extraction['parts'][0]
+            unit=dict(id='staged-unit',title='Synthetic staged-case',statement='Synthetic structure only',
+                facets={'learner':['coach'],'training_population':['youth'],'domain':['football']},
+                objectives=[],prerequisites=[],risks=[],
+                references=[span_ref(extraction['id'],part,part['segments'][0])])
+            operator.save_unit(unit)
+            operator.review_unit('staged-unit','operator','approved','Generated test approval')
+            request={'track':'football','query':'staged-case'}
+            run=produce(operator,request,'stage-production')
+            self.assertEqual(run['state'],'draft_ready',run.get('error'))
+            output=json.loads(artifact(operator,run['id'],'lesson.json').read_text('utf8'))
+            self.assertEqual(output['mode'],'authorized-local')
+            self.assertEqual(output['blueprint']['model_provider'],'SyntheticModel')
+            self.assertEqual(operator.record('ReadinessSource','staged')['body']['mode'],'authorized-local')
+        with self.assertRaises(PermissionError):artifact(self.app,run['id'],'lesson.json')
+        denied=produce(self.app,request,'closed-workspace')
+        self.assertEqual(denied['state'],'blocked')
+
     def test_backup_restore_isolated(self):
         self.source()
         backup=self.app.backup()

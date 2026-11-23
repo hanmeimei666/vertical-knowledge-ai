@@ -109,8 +109,10 @@ def render_documents(directory, run, review_status, timeline):
     blueprint = steps['blueprint']
     by_id = {e['knowledge']['id']:e for e in steps['evidence']['entries']}
     entries = [by_id[id_] for id_ in blueprint['units']]
-    title = blueprint['course']['title'] + ' | Synthetic'
-    plain = [f'# {title}',f'Run {run["id"]} · {review_status}']
+    mode = run['request']['input_mode']
+    title = blueprint['course']['title'] + (' | Synthetic' if mode=='synthetic' else ' | Local authorized input')
+    planner = blueprint.get('model_provider','legacy-provider-unrecorded')
+    plain = [f'# {title}',f'Run {run["id"]} · {review_status}',f'Planner: {planner} · input mode: {mode}']
     blocks = []
     for e in entries:
         unit = e['knowledge']
@@ -118,7 +120,7 @@ def render_documents(directory, run, review_status, timeline):
         label = f"{unit['title']} · v{e['version']} · {e['review_state']}"
         plain += ['## '+escape(label),escape(unit['statement']),'Evidence: '+escape(' / '.join(refs))]
         blocks.append(f'<details><summary>{escape(label)}</summary><p>{escape(unit["statement"])}</p><code>{escape(" / ".join(refs))}</code></details>')
-    shell = f'<header><h1>{escape(title)}</h1><p>Run {escape(run["id"])} · {escape(review_status)}</p></header>'
+    shell = f'<header><h1>{escape(title)}</h1><p>Run {escape(run["id"])} · {escape(review_status)}</p><p>Planner: {escape(planner)} · input mode: {escape(mode)}</p></header>'
     sections = ''.join(blocks)
     exercise = blueprint['interaction']
     activity = f"""<section aria-labelledby="practice"><h2 id="practice">结构练习</h2>
@@ -128,7 +130,7 @@ def render_documents(directory, run, review_status, timeline):
     (directory/'lesson.md').write_text('\n\n'.join(plain)+'\n',encoding='utf8')
     (directory/'lesson.html').write_text(lesson_html(title,shell+sections),encoding='utf8')
     (directory/'activity.html').write_text(lesson_html(title,shell+'<ol>'+modules+'</ol>'+sections+activity),encoding='utf8')
-    (directory/'lesson.json').write_text(encode(dict(run=run['id'],mode='synthetic',review_state=review_status,
+    (directory/'lesson.json').write_text(encode(dict(run=run['id'],mode=mode,review_state=review_status,
                                   evidence=steps['evidence'],blueprint=blueprint,timeline=timeline))+'\n',encoding='utf8')
 
 
@@ -178,7 +180,7 @@ def produce(app, request, key, *, provider=None, retry=False, timeout=20):
     course = request_contract(request)
     if not isinstance(key,str) or not re.fullmatch('[A-Za-z0-9_-]{1,80}',key):
         raise ValueError('An explicit idempotency key is required')
-    full_request = dict(request, version='0.4', input_mode='synthetic')
+    full_request = dict(request, version='0.4', input_mode='authorized-local' if app.authorized_local_intake else 'synthetic')
     previous = app.db.execute('SELECT id,request_hash FROM runs WHERE request_key=?',(key,)).fetchone()
     if previous:
         if previous['request_hash'] != digest(full_request):
@@ -209,9 +211,10 @@ def produce(app, request, key, *, provider=None, retry=False, timeout=20):
                 run.update(state='blocked',error='no_evidence_or_unresolved_conflict')
                 app.save_run(run)
                 return run
-            if any(app.record('ReadinessSource',ref['source'])['body']['mode']!='synthetic'
+            modes = {'synthetic','authorized-local'} if app.authorized_local_intake else {'synthetic'}
+            if any(app.record('ReadinessSource',ref['source'])['body']['mode'] not in modes
                    for e in pack['entries'] for ref in e['references']):
-                raise PermissionError('Synthetic production mode requires generated inputs')
+                raise PermissionError('Source mode is not enabled by the local operator')
             steps['timeline'] = media_inputs(app,request.get('timeline',[]))
             steps['evidence'] = pack
             run.update(state='evidence_ready',error=None)
@@ -221,7 +224,8 @@ def produce(app, request, key, *, provider=None, retry=False, timeout=20):
             allowed = {'documents','interactive'} | ({'media'} if steps['timeline'] else set())
             plan = validate_plan(invoke_model(provider or SyntheticModel(),request,steps['evidence'],timeout),
                                  steps['evidence'],allowed)
-            steps['blueprint'] = dict(plan, course=course, synthetic=True,
+            steps['blueprint'] = dict(plan, course=course, synthetic=full_request['input_mode']=='synthetic',
+                                      model_provider=type(provider or SyntheticModel()).__name__,
                                       source_evidence=steps['evidence']['id'])
             run.update(state='blueprint_ready',error=None)
             app.save_run(run)
