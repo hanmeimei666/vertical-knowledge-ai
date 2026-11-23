@@ -13,5 +13,5 @@
   "historical_sample": "48-hour-v02",
   "real_content_import_this_iteration": false,
   "model_training": false,
-  "remote_push_authorized": false
+  "remote_push_authorized": true
 }

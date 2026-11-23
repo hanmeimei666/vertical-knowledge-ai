@@ -3,7 +3,9 @@
 ## V0.3 云端同步（当前任务）
 - Git核查完成：分支051aa23，工作区干净，origin正确，远端开发分支不存在。
 - 本地49项测试、smoke_platform和历史verify通过。
-- 进行中：跟踪文件审计→CI与Git规范→正常推送→Draft PR→云端CI验证→交付报告。
+- 已完成跟踪文件审计、CI和Git规范、正常推送及upstream；实现/CI基线58c296120a6799234b6e16b19386a0a8253c77c1。
+- Draft PR：https://github.com/hanmeimei666/vertical-knowledge-ai/pull/1，保持草稿、未合并。Push CI 45039529653和PR CI 45040347368均success（三Job）。
+- 交付报告与授权状态修订作为独立docs提交同步，最终远端SHA和CI核验值随交付消息及本地data/cloud-sync记录保存；报告见docs/v03/云端同步交付报告.md。
 - 不合并main；v0.3.0须审查/CI通过并获负责人批准合并后才创建。本轮不扩充功能。
 
 ## 已完成的启动准备（2026-11-14）

@@ -1,6 +1,10 @@
 # 现状发现
 
 ## 云端同步核查
+
+2026-11-23更新：开发分支已正常推送，58c296120a6799234b6e16b19386a0a8253c77c1远端一致；Push/PR两次Actions均success。Draft PR #1保持草稿、未合并（https://github.com/hanmeimei666/vertical-knowledge-ai/pull/1）。连接器创建PR返回403，改用已登录浏览器完成，再经连接器读取核验；未扩大权限。已建立CI/CONTRIBUTING/PR模板，服务端Ruleset未配置；main及正式Tag不变。
+
+以下为初始核查：
 远端开发分支不存在，main=14d1f14；本地051aa23包含V0.3。GitHub连接器已可读取仓库，权限push/admin，当前visibility=public（与早期私有记录不同，本轮不调整）。暂无Actions/依赖清单；核心标准库，PDF/图片测试按依赖存在执行，应分核心与轻量可选CI，不装OCR/ASR模型。
 
 ## 第4轮导入与GitHub核查
