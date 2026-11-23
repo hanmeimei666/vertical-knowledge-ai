@@ -1,5 +1,9 @@
 # 现状发现
 
+## 第二轮工程审查
+基线工作区干净。register直接保留外部可变定义并按ID覆盖；health/discover也暴露内部定义。invoke独立入口仅信任调用者rights，未执行data_sensitivity。extract的synthetic字段也由manifest提供，不能作为来源证明；export入口同样仅传adapt=True。需绑定数据库来源记录、可信生成证据、文件哈希及当前状态/权限，统一在invoke执行前和幂等返回前检查。
+GitHub Rulesets读取为空；连接器读取协作者权限403 Resource not accessible by integration。尚未配置任何服务端规则，后续尝试已登录网页。
+
 ## 云端同步核查
 
 2026-11-23更新：开发分支已正常推送，58c296120a6799234b6e16b19386a0a8253c77c1远端一致；Push/PR两次Actions均success。Draft PR #1保持草稿、未合并（https://github.com/hanmeimei666/vertical-knowledge-ai/pull/1）。连接器创建PR返回403，改用已登录浏览器完成，再经连接器读取核验；未扩大权限。已建立CI/CONTRIBUTING/PR模板，服务端Ruleset未配置；main及正式Tag不变。

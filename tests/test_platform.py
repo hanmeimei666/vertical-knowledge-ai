@@ -1,4 +1,5 @@
 from contextlib import closing
+from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
@@ -17,7 +18,7 @@ from platform_contracts import contract
 from platform_migrate import migrate,rollback
 from platform_tools import definition
 from platform_parsers import parse_file
-from platform_production import produce
+from platform_production import produce, register_exporter
 
 
 def obj(id_,**fields):
@@ -91,6 +92,42 @@ class PlatformChecks(unittest.TestCase):
         d=definition('timeout','echo','testing');d['timeout']=0.001;self.app.tools.register(d)
         self.assertEqual(self.app.tools.invoke('timeout',{'value':1},{},'timeout')['state'],'failed')
         self.assertEqual(self.app.tools.health('ocr')['status'],'planned')
+
+    def test_tool_registration_is_idempotent_and_rejects_conflicts(self):
+        d=definition('registered','echo','testing',['retrieve'])
+        self.app.tools.register(d)
+        self.app.tools.register(deepcopy(d))
+        changes={'permission_requirements':['adapt'],'adapter_key':'native_parse',
+            'input_schema':{'type':'string'},'output_schema':{'type':'string'},
+            'data_sensitivity':'unknown','timeout':1,'description':'changed','version':2}
+        for field,value in changes.items():
+            with self.subTest(field=field):
+                other=deepcopy(d);other[field]=value
+                with self.assertRaisesRegex(ValueError,'Conflicting tool definition'):
+                    self.app.tools.register(other)
+                self.assertEqual(self.app.tools.health('registered')['definition'],d)
+
+    def test_registered_definition_is_protected_from_external_mutation(self):
+        d=definition('protected','echo','testing',['retrieve'])
+        expected=deepcopy(d);self.app.tools.register(d)
+        d['permission_requirements'].clear();d['input_schema']['required'].clear()
+        self.app.tools.health('protected')['definition']['permission_requirements'].clear()
+        self.app.tools.discover()[0]['definition']['capabilities'].clear()
+        self.app.tools.definitions['protected']['output_schema'].clear()
+        self.assertEqual(self.app.tools.health('protected')['definition'],expected)
+
+    def test_exporter_registration_can_repeat_before_production(self):
+        self.populate()
+        register_exporter(self.app)
+        expected=self.app.tools.health('export.draft')['definition']
+        register_exporter(self.app)
+        self.assertEqual(self.app.tools.health('export.draft')['definition'],expected)
+        request=obj('repeat-export',goal='Synthetic',project={},domains=[],populations=[],
+            scenarios=[],outputs=['markdown','html','json'],evidence={},
+            available_tools=['export.draft'],restrictions={})
+        run=produce(self.app,request,'repeat-export')
+        self.assertEqual(run['state'],'draft_ready')
+        self.assertEqual(len(run['steps']['artifacts']),3)
 
     def test_taxonomy_cycles_and_unreviewed_relations(self):
         self.populate()

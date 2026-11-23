@@ -1,5 +1,12 @@
 # 项目推进计划
 
+## V0.3 第二轮工程审查（当前任务）
+- 基线6fb47015d697358e46f3f70aec90c69fe6d90b15；沿用feat/general-sports-platform-v03及Draft PR #1。
+- 注册定义幂等/冲突/副本保护完成；52测试、smoke、verify、跟踪检查通过，独立提交同步。
+- 待做：可信来源执行上下文和独立权限门禁，负向测试及完整合成链路，独立Commit/Push。
+- 待做：历史与审查前CI证据、未声明开源许可说明；尝试main Ruleset并记录实际状态及设置方法。
+- 收尾：完整测试、远端/PR SHA及Push/PR CI交叉核验；不合并、不打Tag、不启动V0.4。
+
 ## V0.3 云端同步（当前任务）
 - Git核查完成：分支051aa23，工作区干净，origin正确，远端开发分支不存在。
 - 本地49项测试、smoke_platform和历史verify通过。

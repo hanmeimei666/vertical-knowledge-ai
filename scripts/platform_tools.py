@@ -1,4 +1,5 @@
 """Allowlisted adapters, dependency/health checks, schemas, policy and timed execution."""
+from copy import deepcopy
 import hashlib
 import importlib.util
 import json
@@ -33,36 +34,45 @@ class ToolRegistry:
     def __init__(self, db):
         self.db=db
         self.adapters={'native_parse':native_parse,'echo':echo}
-        self.definitions={}
+        self._definitions={}
+
+    @property
+    def definitions(self):
+        return deepcopy(self._definitions)
 
     def register_adapter(self,key,adapter):
         if key in self.adapters and self.adapters[key] is not adapter: raise ValueError('Duplicate adapter')
         self.adapters[key]=adapter  # Code-only extension; never loaded from model strings.
 
     def register(self,definition):
+        definition=deepcopy(definition)
         contract('ToolDefinition',definition)
         if definition['status'] not in ('implemented','available','unavailable_dependency','disabled_by_policy','planned','failed_health_check'):
             raise ValueError('Unknown tool state')
         if not 0 < definition['timeout'] <= 120: raise ValueError('Invalid timeout')
-        self.definitions[definition['tool_id']]=definition
+        id_=definition['tool_id']
+        if id_ in self._definitions:
+            if self._definitions[id_]!=definition: raise ValueError('Conflicting tool definition: '+id_)
+            return
+        self._definitions[id_]=definition
 
     def health(self,id_):
-        d=self.definitions[id_]
+        d=self._definitions[id_]
         state=d['status']; reason='implementation reserved; not executable' if state=='planned' else 'registered policy state'
         if state in ('implemented','available'):
             missing=[m for m in d['dependencies'] if importlib.util.find_spec(m) is None]
             if missing: state,reason='unavailable_dependency',','.join(missing)
             elif d['adapter_key'] not in self.adapters: state,reason='failed_health_check','adapter not allowlisted'
             else: state,reason='available','adapter and dependencies available'
-        return {'tool_id':id_,'status':state,'reason':reason,'definition':d}
+        return {'tool_id':id_,'status':state,'reason':reason,'definition':deepcopy(d)}
 
     def discover(self,capability=None):
-        return [self.health(k) for k,d in self.definitions.items() if capability is None or capability in d['capabilities']]
+        return [self.health(k) for k,d in self._definitions.items() if capability is None or capability in d['capabilities']]
 
     def invoke(self,id_,payload,rights,key,approved=False):
         contract('ToolInvocation',{'id':key,'schema_version':'0.3','version':1,'tool_id':id_,
             'input':payload,'rights':rights,'idempotency_key':key})
-        d=self.definitions[id_]
+        d=self._definitions[id_]
         request_hash=hashlib.sha256(encode({'tool':d,'input':payload,'rights':rights,'approved':approved}).encode()).hexdigest()
         previous=self.db.execute('SELECT request_hash,result FROM tool_invocations WHERE id=?',(key,)).fetchone()
         if previous:
