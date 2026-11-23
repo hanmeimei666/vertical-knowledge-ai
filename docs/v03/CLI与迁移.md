@@ -20,7 +20,7 @@ python scripts/platform_cli.py query Synthetic --filters '{"domain":["alpha","be
 python scripts/platform_cli.py run data/request.json --key production-001
 python scripts/platform_cli.py resume <run-id>
 ```
-输入遵循schemas/v03。清单synthetic=true、sensitive=none且六项权利明确；并不是给真实资料加synthetic标志便获授权。本轮真实内容建设禁止，完成后停止。
+输入遵循schemas/v03。第二轮审查后，extract清单必须匹配固定生成器已登记的来源及当前权限；单凭synthetic=true、sensitive=none或六项自声明权利不能准入。使用smoke_platform.py生成9格式固定样本、来源证明、库和报告，再在该独立工作空间复验。Platform.create_fixture不接收现有文件或自定义内容；旧清单缺少生成证明会拒绝，不自动追认。本轮真实内容建设禁止，完成后停止。
 
 旧流程使用--config config/runtime.legacy.json，历史课程检查knowledge.py verify。不要在本轮执行旧seed导入真实内容。平台API复用本机Bearer只读serve.py：有V0.3对象时用共享检索及相应指纹；纯旧库维持旧方式，以免旧任务被错误失效。
 

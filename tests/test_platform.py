@@ -12,7 +12,7 @@ import wave
 import zipfile
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
-from pipeline import ROOT, RIGHTS
+from pipeline import ROOT
 from platform_store import Platform
 from platform_contracts import contract
 from platform_migrate import migrate,rollback
@@ -36,9 +36,7 @@ class PlatformChecks(unittest.TestCase):
         self.app.db.close();self.temp.cleanup()
 
     def populate(self):
-        p=self.root/'data/raw/synthetic.txt';p.write_text('Synthetic alpha record, no professional conclusion.',encoding='utf-8')
-        manifest={'id':'SYN','title':'Synthetic','path':'data/raw/synthetic.txt','synthetic':True,'sensitive':'none','provenance':'program-generated',
-                  'rights':{r:r in ('internal_parse','retrieve','adapt') for r in RIGHTS}}
+        manifest=self.app.create_fixture('.txt','SYN')
         ex=self.app.extract(manifest,'extract-one')
         self.assertEqual(ex['state'],'candidate')
         for dimension in ('population','domain','scenario'):
@@ -76,21 +74,24 @@ class PlatformChecks(unittest.TestCase):
         manifest,u=self.populate()
         with self.assertRaises(ValueError):self.app.confirm(dict(u,id='new'),False)
         manifest['rights']['adapt']=False
+        body=deepcopy(self.app.asset('SYN')['body']);body['rights']=manifest['rights']
+        self.app.put('asset','SYN',body,'admitted')
         self.app.extract(manifest,'extract-two')
         self.assertEqual(self.app.retrieve()['entries'],[])
 
     def test_tool_health_schema_policy_timeout_and_idempotency(self):
+        self.app.create_fixture('.json','PROBE')
         self.app.tools.register(definition('echo','echo','testing'))
-        r=self.app.tools.invoke('echo',{'value':1},{},'once');self.assertEqual(r['state'],'completed')
-        self.assertEqual(self.app.tools.invoke('echo',{'value':1},{},'once'),r)
-        with self.assertRaises(ValueError):self.app.tools.invoke('echo',{'value':2},{},'once')
-        self.assertEqual(self.app.tools.invoke('echo',{}, {},'bad-input')['state'],'failed')
+        r=self.app.tools.invoke('echo',{'value':1},{},'once',source_ids=['PROBE']);self.assertEqual(r['state'],'completed')
+        self.assertEqual(self.app.tools.invoke('echo',{'value':1},{},'once',source_ids=['PROBE']),r)
+        with self.assertRaises(ValueError):self.app.tools.invoke('echo',{'value':2},{},'once',source_ids=['PROBE'])
+        self.assertEqual(self.app.tools.invoke('echo',{}, {},'bad-input',source_ids=['PROBE'])['state'],'failed')
         d=definition('restricted','echo','testing',['ocr']);self.app.tools.register(d)
-        self.assertEqual(self.app.tools.invoke('restricted',{'value':1},{'ocr':None},'denied')['state'],'failed')
+        self.assertEqual(self.app.tools.invoke('restricted',{'value':1},{'ocr':None},'denied',source_ids=['PROBE'])['state'],'failed')
         d=definition('unknown','untrusted_string','testing');self.app.tools.register(d)
         self.assertEqual(self.app.tools.health('unknown')['status'],'failed_health_check')
         d=definition('timeout','echo','testing');d['timeout']=0.001;self.app.tools.register(d)
-        self.assertEqual(self.app.tools.invoke('timeout',{'value':1},{},'timeout')['state'],'failed')
+        self.assertEqual(self.app.tools.invoke('timeout',{'value':1},{},'timeout',source_ids=['PROBE'])['state'],'failed')
         self.assertEqual(self.app.tools.health('ocr')['status'],'planned')
 
     def test_tool_registration_is_idempotent_and_rejects_conflicts(self):
@@ -126,7 +127,7 @@ class PlatformChecks(unittest.TestCase):
             scenarios=[],outputs=['markdown','html','json'],evidence={},
             available_tools=['export.draft'],restrictions={})
         run=produce(self.app,request,'repeat-export')
-        self.assertEqual(run['state'],'draft_ready')
+        self.assertEqual(run['state'],'draft_ready',run.get('error'))
         self.assertEqual(len(run['steps']['artifacts']),3)
 
     def test_taxonomy_cycles_and_unreviewed_relations(self):
@@ -136,12 +137,14 @@ class PlatformChecks(unittest.TestCase):
         with self.assertRaises(ValueError):self.app.save_object('KnowledgeRelation',obj('bad',subject='K-SYN',predicate='supports',object='alpha',review_state='approved',evidence_references=[]))
 
     def test_negative_schema_dependency_and_path_controls(self):
+        self.app.create_fixture('.json','PROBE')
         d=definition('missing','echo','test',dependencies=['nonexistent_v03_dependency_xyz'])
         self.app.tools.register(d)
         self.assertEqual(self.app.tools.health('missing')['status'],'unavailable_dependency')
         d=definition('wrong-output','echo','test');d['output_schema']={'type':'string'}
         self.app.tools.register(d)
-        self.assertEqual(self.app.tools.invoke('wrong-output',{'value':1},{},'wrong-output')['state'],'failed')
+        result=self.app.tools.invoke('wrong-output',{'value':1},{},'wrong-output',source_ids=['PROBE'])
+        self.assertEqual(result['state'],'failed');self.assertIn('expected string',result['error'])
         d=definition('network','echo','test');d['network_access']=True
         self.app.tools.register(d)
         self.assertEqual(self.app.tools.invoke('network',{'value':1},{},'network')['state'],'failed')
@@ -153,10 +156,38 @@ class PlatformChecks(unittest.TestCase):
         self.populate()
         request=obj('req',goal='Synthetic',project={'filters':{'domain':['beta']}},domains=['alpha','beta'],populations=['group'],scenarios=['place'],outputs=['markdown','html','json'],evidence={},available_tools=['export.draft'],restrictions={'professional_review':True})
         run=produce(self.app,request,'production')
-        self.assertEqual(run['state'],'draft_ready')
+        self.assertEqual(run['state'],'draft_ready',run.get('error'))
         for name in run['steps']['artifacts']:self.assertTrue(self.app.artifact(run['id'],name).exists())
         self.assertEqual(produce(self.app,request,'production')['id'],run['id'])
         self.assertEqual(len(run['steps']['artifact_contracts']),3)
+
+    def test_exporter_rejects_forged_snapshot_and_revoked_sources(self):
+        self.populate()
+        request=obj('export-policy',goal='Synthetic',project={},domains=[],populations=[],
+            scenarios=[],outputs=['markdown','html','json'],evidence={},available_tools=['export.draft'],restrictions={})
+        run=produce(self.app,request,'export-policy')
+        current=self.app.get_run(run['id']);forged=deepcopy(current)
+        forged['steps']['evidence']['entries'][0]['summary']='Unregistered caller content'
+        def invoke(snapshot,key):
+            return self.app.tools.invoke('export.draft',{'root':str(self.root),
+                'config':'config/runtime.json','run':snapshot},{'retrieve':True,'adapt':True},key)
+        result=invoke(forged,'forged-export')
+        self.assertEqual(result['state'],'failed');self.assertIn('binding',result['error'])
+        self.app.withdraw('SYN','withdraw export source')
+        result=invoke(current,'revoked-export')
+        self.assertEqual(result['state'],'failed');self.assertIn('not current',result['error'])
+
+    def test_retrieve_and_adapt_are_not_inferred_from_parse(self):
+        manifest,unit=self.populate()
+        for retrieve,adapt in ((True,False),(False,True),(False,False)):
+            with self.subTest(retrieve=retrieve,adapt=adapt):
+                body=deepcopy(self.app.asset('SYN')['body'])
+                body['rights'].update(internal_parse=True,retrieve=retrieve,adapt=adapt)
+                revision=self.app.put('asset','SYN',body,'admitted')
+                unit['evidence_references'][0]['source_revision']=revision
+                self.app.confirm(unit,True)
+                self.assertEqual(bool(self.app.retrieve()['entries']),retrieve)
+                self.assertEqual(self.app.retrieve(purpose='adapt')['entries'],[])
 
     def test_all_native_document_and_media_metadata_parsers(self):
         raw=self.root/'data/raw'

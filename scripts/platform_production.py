@@ -13,7 +13,7 @@ def export_draft(payload):
 
 def register_exporter(app):
     app.tools.register_adapter('export_draft',export_draft)
-    d=definition('export.draft','export_draft','markdown_html_json',['adapt'])
+    d=definition('export.draft','export_draft','markdown_html_json',['retrieve','adapt'])
     d['input_schema']={'type':'object','required':['root','config','run'],'properties':{'root':{'type':'string'},'config':{'type':'string'},'run':{'type':'object'}},'additionalProperties':False}
     d['output_schema']={'type':'object','required':['files']}
     app.tools.register(d)
@@ -64,7 +64,9 @@ def produce(app,request,key,retry=False):
         run['steps']['agent_plan']=ExtractivePlanner().invoke('content_planning',request,pack)
         run.update(state='blueprint_ready',error=None);app.save_run(run)
     attempt=app.db.execute('SELECT count(*) FROM tool_invocations WHERE id LIKE ?',(run['id']+'-export%',)).fetchone()[0]
-    result=app.tools.invoke('export.draft',{'root':str(app.root),'config':str(app.config_path.relative_to(app.root)),'run':run},{'adapt':True},run['id']+'-export-'+str(attempt))
+    run=app.get_run(run['id'])  # Bind the exact persisted snapshot, including updated timestamps.
+    if run['state'] in ('invalidated','blocked'):return run
+    result=app.tools.invoke('export.draft',{'root':str(app.root),'config':str(app.config_path.relative_to(app.root)),'run':run},{'retrieve':True,'adapt':True},run['id']+'-export-'+str(attempt))
     if result['state']!='completed':
         run.update(state='failed',error=result.get('error'));app.save_run(run);return run
     run['steps']['artifacts']=result['output']['files']

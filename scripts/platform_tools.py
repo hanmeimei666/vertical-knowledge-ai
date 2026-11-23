@@ -31,8 +31,9 @@ def _worker(connection, adapter, payload):
 
 
 class ToolRegistry:
-    def __init__(self, db):
+    def __init__(self, db, authorizer=None):
         self.db=db
+        self._authorize=authorizer
         self.adapters={'native_parse':native_parse,'echo':echo}
         self._definitions={}
 
@@ -69,23 +70,23 @@ class ToolRegistry:
     def discover(self,capability=None):
         return [self.health(k) for k,d in self._definitions.items() if capability is None or capability in d['capabilities']]
 
-    def invoke(self,id_,payload,rights,key,approved=False):
+    def invoke(self,id_,payload,rights,key,approved=False,source_ids=None):
+        payload=deepcopy(payload);rights=deepcopy(rights);source_ids=deepcopy(source_ids)
         contract('ToolInvocation',{'id':key,'schema_version':'0.3','version':1,'tool_id':id_,
             'input':payload,'rights':rights,'idempotency_key':key})
         d=self._definitions[id_]
-        request_hash=hashlib.sha256(encode({'tool':d,'input':payload,'rights':rights,'approved':approved}).encode()).hexdigest()
+        request_hash=hashlib.sha256(encode({'tool':d,'input':payload,'rights':rights,'approved':approved,'sources':source_ids}).encode()).hexdigest()
         previous=self.db.execute('SELECT request_hash,result FROM tool_invocations WHERE id=?',(key,)).fetchone()
         if previous:
             if previous[0]!=request_hash: raise ValueError('Idempotency key reused')
             saved=json.loads(previous[1])
             if saved['state']=='running': raise ValueError('Uncertain/interrupted attempt; use a new explicit attempt key')
-            return saved
         result={'id':key,'schema_version':'0.3','version':1,'tool_id':id_,'state':'running','output':{}}
         def save():
             with self.db:
                 self.db.execute('INSERT OR REPLACE INTO tool_invocations VALUES(?,?,?,?,?,?,?)',
                     (key,id_,str(d['version']),result['state'],request_hash,encode(result),now()))
-        save()
+        if not previous:save()
         try:
             health=self.health(id_)
             if health['status']!='available': raise ValueError(health['status']+': '+health['reason'])
@@ -93,6 +94,11 @@ class ToolRegistry:
             if d['network_access'] or d['external_processing']: raise PermissionError('Network/external tools disabled in V0.3')
             if d['human_approval_required'] and not approved: raise PermissionError('Approval required')
             validate(payload,d['input_schema'])
+            if d['data_sensitivity']!='synthetic_only': raise PermissionError('Unknown/unsupported tool data sensitivity')
+            if self._authorize is None: raise PermissionError('Trusted source authorizer required')
+            self._authorize(d,payload,source_ids)
+            # Re-authorize current records before returning any cached output.
+            if previous:return saved
             context=multiprocessing.get_context('spawn')
             parent,child=context.Pipe(duplex=False)
             process=context.Process(target=_worker,args=(child,self.adapters[d['adapter_key']],payload))
