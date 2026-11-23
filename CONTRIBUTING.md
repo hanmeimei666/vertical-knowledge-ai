@@ -30,4 +30,4 @@ CI对所有Push、指向main的PR和手动触发运行：Linux/Windows核心测�
 
 待Draft PR审查、CI通过、负责人批准并合并main后，fetch远端并检查merge SHA；重新验收合并后的main，确认v0.3.0尚不存在且未指向别处，再在该main SHA创建附注Tag并正常推送，禁止移动已发布Tag。发布记录填写：main Commit SHA、PR链接、CI链接及通过结果、交付/迁移和限制。保留开发分支与PR历史。
 
-本轮只建立规则与审查入口，尚未配置GitHub分支保护/Ruleset的服务端强制限制；不将文档约定宣传为已强制执行。所有开发报告必须写分支、实现Commit、最新远端SHA、PR、CI与发布状态。自引用报告不能包含自身Commit SHA，使用git rev-parse HEAD及PR头SHA核对最新修订。
+main服务端Ruleset main-review-and-ci（27876050）已Active：必须PR、三个GitHub Actions矩阵检查成功、解决所有讨论；禁止强推和删除；无旁路，不强制额外批准人数。所有开发报告必须写分支、实现Commit、最新远端SHA、PR、CI与发布状态。自引用报告不能包含自身Commit SHA，使用git rev-parse HEAD及PR头SHA核对最新修订。

@@ -1,5 +1,7 @@
 # 现状发现
 
+2026-11-23最终核查：负责人身份确认后main-review-and-ci已保存，Ruleset API id=27876050/enforcement=active，精确main、无旁路、PR及讨论门禁、0额外批准，三检查integration_id=15368。此前身份等待与连接器403属于历史过程，已用浏览器完成设置和PR说明更新，未扩大连接器权限。
+
 ## 第二轮工程审查
 授权方案已落实：fixture_origin来自固定生成器，使用现有records/revisions/audit，不引入新SQL迁移；所有工具由数据库来源状态/哈希/权限及适配器payload绑定授权，直接调用和缓存复用均重新检查。工具之外的旧底层函数保留为本地可信开发接口；不声称抵抗可任意修改本地代码/库的操作者。旧自声明合成清单不可追认，须重建固定测试样本；没有真实资料导入扩权。
 基线工作区干净。register直接保留外部可变定义并按ID覆盖；health/discover也暴露内部定义。invoke独立入口仅信任调用者rights，未执行data_sensitivity。extract的synthetic字段也由manifest提供，不能作为来源证明；export入口同样仅传adapt=True。需绑定数据库来源记录、可信生成证据、文件哈希及当前状态/权限，统一在invoke执行前和幂等返回前检查。

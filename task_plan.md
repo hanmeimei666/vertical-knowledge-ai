@@ -4,8 +4,8 @@
 - 基线6fb47015d697358e46f3f70aec90c69fe6d90b15；沿用feat/general-sports-platform-v03及Draft PR #1。
 - 注册定义幂等/冲突/副本保护完成；52测试、smoke、verify、跟踪检查通过，独立提交同步。
 - 来源记录/固定生成器、文件及Run绑定、独立权限和缓存前复核已完成并独立Push；Windows短路径兼容修复后66测试、smoke、verify与三Job云端CI通过。
-- 历史与审查前CI证据、修复后验证和未声明开源许可说明已补齐。main Ruleset已填写，保存被GitHub自身身份确认阻挡；已请求负责人确认，报告提供实际状态和复现步骤。
-- 收尾中：报告独立同步、远端/PR SHA及最新Push/PR CI核验；等待GitHub身份确认后验证规则并更新PR说明。不合并、不打Tag、不启动V0.4。
+- 历史与审查前CI证据、修复后验证和未声明开源许可说明已补齐。负责人完成身份确认后，API核验main Ruleset 27876050 Active，PR/三检查/讨论/禁强推删除均生效，无旁路、0额外批准。
+- PR说明已更新并经API确认仍为Draft、未合并。收尾状态补录独立同步后核验最新远端/PR SHA及Push/PR CI；不合并、不打Tag、不启动V0.4。
 
 ## V0.3 云端同步（当前任务）
 - Git核查完成：分支051aa23，工作区干净，origin正确，远端开发分支不存在。
