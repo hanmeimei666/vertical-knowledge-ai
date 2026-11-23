@@ -38,3 +38,5 @@
 复核发现生产层曾固定只接受synthetic来源，虽可登记/解析暂存来源但无法进入内容生产。现已按受信操作员的authorized_local_intake策略衔接；默认启动入口仍关闭，仅显式操作员工作区可使用经独立审批的本地来源，所有证据、专项处理、版本和审核检查仍执行。输出保留authorized-local输入模式和ModelProvider名称，未把来源改标为Synthetic或冒称真实模型。
 
 新增测试仅写入程序生成的“无专业内容”暂存字节，完整走登记→授权→解析→知识审核→产出，并确认默认关闭工作区无法读取成果或生产。测试总数由87增至88，完整测试、16格式smoke、V0.3兼容及文件审计通过；日志data/v04-audit/operator-flow-validation.txt。本轮未导入真实资料。
+
+修复提交25cf670107f28794c590734b375f2334b3f95ef3：[Push CI 45169609400](https://github.com/hanmeimei666/vertical-knowledge-ai/actions/runs/45169609400)、[PR CI 45169622262](https://github.com/hanmeimei666/vertical-knowledge-ai/actions/runs/45169622262)均成功，Linux核心/Windows核心/Linux可选依赖三Job全通过。最终本地日志data/v04-audit/final-validation.txt。PR #2保持Draft，Review Threads读取为空。后续状态补录提交仍由同一PR及CI追踪，不合并、不打Tag。

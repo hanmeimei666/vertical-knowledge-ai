@@ -90,4 +90,4 @@ Phase0–7已完成本地工程首版：49测试通过、旧verify通过、模�
 |V0.3 收尾与隔离|complete|3359c2d，Draft #1；V0.4 从独立分支创建叠加 Draft #2|
 |来源、解析、知识、检索、Agent|complete|默认拒绝、版本绑定、分段恢复、36 查询、三条合成课程线|
 |本地演示与媒体|complete|Windows 浏览器实测足球草稿和答题反馈，合成音视频、哈希与时码实物|
-|最终验证|complete|87项测试、799fbc8的Push 45152426975及PR 45152436559成功；本次证据补录的最终SHA/CI随交付消息及本地data/v04-audit记录|
+|最终验证|complete|88项测试及完整smoke通过；衔接修复25cf670的Push 45169609400及PR 45169622262三Job通过；最终文档SHA/CI随交付消息及本地data/v04-audit记录|
