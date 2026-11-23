@@ -5,6 +5,7 @@
 基线工作区干净。register直接保留外部可变定义并按ID覆盖；health/discover也暴露内部定义。invoke独立入口仅信任调用者rights，未执行data_sensitivity。extract的synthetic字段也由manifest提供，不能作为来源证明；export入口同样仅传adapt=True。需绑定数据库来源记录、可信生成证据、文件哈希及当前状态/权限，统一在invoke执行前和幂等返回前检查。
 GitHub Rulesets读取为空；连接器读取协作者权限403 Resource not accessible by integration。尚未配置任何服务端规则，后续尝试已登录网页。
 浏览器已进入新建分支Ruleset，准备Active、精确refs/heads/main、无旁路、PR必须、0额外批准、解决对话、禁止删除/强推，并添加三个实际Actions检查。当前仍在表单，未保存，不作已配置声明。界面翻译会改变按钮名称，一次Active定位未命中后改为读取实际中文选项。
+三个检查已通过键盘选择加入，来源为GitHub Actions；鼠标选择在翻译后的列表不生效，不重复盲点。Create触发GitHub Confirm access身份弹窗，需用户自行完成（已请求并保留页面）。保存前API仍为空。PR说明连接器更新403，不能冒称更新成功。c0c0935的两个CI均全部通过；后续许可文档14aa826的CI亦成功。
 
 ## 云端同步核查
 
