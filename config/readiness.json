@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "domain": "sports_education",
+  "knowledge_directory": "data/readiness/knowledge",
+  "raw_directory": "data/readiness/raw",
+  "database": "data/readiness/catalog.sqlite3",
+  "output_directory": "outputs/readiness",
+  "rules_file": "config/domain_rules.json",
+  "reviewer": null,
+  "retrieval": {
+    "limit": 5,
+    "minimum_score": 1
+  },
+  "model": {
+    "backend": "extractive",
+    "name": "",
+    "endpoint": "http://127.0.0.1:11434/api/chat",
+    "api_key_env": "OPENAI_API_KEY",
+    "allow_external": false,
+    "timeout_seconds": 60,
+    "max_input_chars": 20000,
+    "max_output_tokens": 1200
+  },
+  "service": {
+    "host": "127.0.0.1",
+    "port": 8766,
+    "token_env": "VKA_SERVICE_TOKEN"
+  }
+}

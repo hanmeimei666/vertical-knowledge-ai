@@ -1,0 +1,32 @@
+{
+  "conditioning": {
+    "title": "青少年体能训练",
+    "learner": "educator",
+    "training_population": "youth",
+    "modules": [
+      "资料导航",
+      "证据定位",
+      "结构练习"
+    ]
+  },
+  "rehabilitation": {
+    "title": "青少年运动康复与防护",
+    "learner": "educator",
+    "training_population": "youth",
+    "modules": [
+      "资料导航",
+      "边界与复核",
+      "结构练习"
+    ]
+  },
+  "football": {
+    "title": "足球青训",
+    "learner": "coach",
+    "training_population": "youth",
+    "modules": [
+      "资料导航",
+      "素材与证据",
+      "结构练习"
+    ]
+  }
+}

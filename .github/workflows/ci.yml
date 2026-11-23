@@ -1,9 +1,9 @@
-name: V0.3 validation
+name: Sports platform validation
 
 on:
   push:
   pull_request:
-    branches: [main]
+    branches: [main, feat/general-sports-platform-v03]
   workflow_dispatch:
 
 permissions:
@@ -53,6 +53,12 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Run generated V0.3 end-to-end smoke
         run: python scripts/smoke_platform.py
+      - name: Run V0.4 synthetic readiness acceptance
+        if: matrix.dependencies == 'core'
+        run: python scripts/smoke_readiness.py
+      - name: Run full synthetic multimodal acceptance
+        if: matrix.dependencies == 'optional'
+        run: python scripts/smoke_readiness.py --full
       - name: Verify historical course structure
         run: python scripts/knowledge.py verify
       - name: Validate optional dependencies and JSON Schemas
