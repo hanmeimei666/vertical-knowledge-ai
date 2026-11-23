@@ -15,3 +15,5 @@
 - 完成后报告：实际变更、运行方法、通过/失败/未验证事项、成本和下一步。
 
 系统入口：`docs/v03/架构与数据对象.md`；运行配置：`config/runtime.json`。检查：`python scripts/knowledge.py verify`；测试：`python -m unittest discover -s tests -v`；检索回归：`python scripts/evaluate.py`。这些不代替专业审核或真实教学效果验证。
+
+当前阶段更新（2026-11-23）：用户已明确授权V0.4接入前工程，范围以PROJECT_BRIEF及docs/v04为准。使用feat/pre-ingestion-readiness和叠加Draft PR #2，V0.3 PR #1范围独立保留；不能自动合并、调整到main或打Tag。固定合成样本、模拟模型和模拟识别必须标记Synthetic；真实来源、模型质量和专家审核仍待后续批准。新增演示入口start-demo.cmd/start-demo.sh，完整验收python scripts/smoke_readiness.py --full。

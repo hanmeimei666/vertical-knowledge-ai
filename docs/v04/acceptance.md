@@ -22,3 +22,13 @@
 - Windows 全量回归曾复现未读完有界 POST 请求体时连接被重置。服务先读限长请求体、再核对不可伪造的会话和来源，回环 HTTP 安全回归及全量回归随后通过。
 
 [本地运行与复现](operation.md) · [架构、对象与工具](architecture.md) · [起始工程差距](engineering-audit.md)
+
+## 最终独立复核（2026-11-23）
+
+实现基线799fbc8f169f783a8794ec5a2878a69e98794dcc；[Push CI 45152426975](https://github.com/hanmeimei666/vertical-knowledge-ai/actions/runs/45152426975)及[PR CI 45152436559](https://github.com/hanmeimei666/vertical-knowledge-ai/actions/runs/45152436559)均success。保持叠加Draft #2→feat/general-sports-platform-v03，不改main或Tag。
+
+本轮再次实际运行：87项unittest通过（12.312秒）、smoke_readiness.py --full通过、smoke_platform.py通过、knowledge.py verify和check_tracked_files.py通过。日志保存在本地data/v04-audit/validation.txt。完整报告data/v04-smoke/8e38ffb425294ae8b36c573bdc56cf25/report.json，16类输入与解析阶段齐全，三条课程线Run依次064f3f7fd07b40dc81c029d9ffff9f99、7b31a609e9754455b2d8b152b9d42713、a59e9c7cd5ed4fb99b5ff4ba25215bc5，均draft_ready；36查询三项指标1.0，误召回和泄露0，仅代表合成工程测试。
+
+浏览器独立复核：以python scripts/readiness_demo.py --full --no-browser --port 8770启动，实际选择足球线、拼接视频并生产Run 474e6c33f55548108bc3571e6ff05d52，页面列出lesson.md/html/json、activity.html、clip.mp4和timeline.json。独立课件提交locator返回“The locator identifies the source coordinate.”，不是静态截图演示。
+
+当前定义卡和协作入口已更新到V0.4，能力清单按五种状态分列。本次状态补录作为后续文档提交正常Push；最新HEAD、远端与PR头SHA及其CI在交付消息和本地data/v04-audit核验，不将报告自引用SHA写成自身提交。
