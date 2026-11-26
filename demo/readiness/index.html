@@ -10,7 +10,7 @@
 <main>
 <section id="overview" class="hero"><div><p class="eyebrow">体育教育工具台 / V0.4</p><h1>从资料到可审查的课件</h1><p>使用程序生成的资料，演示授权、定位、检索、编排和审核。</p><a href="#produce" class="cta">生成合成课件</a></div><div class="reading" aria-live="polite"><dl id="counts"></dl><button id="reset" class="quiet">重新生成演示库</button></div></section>
 <p id="status" role="status">正在读取本地工作区…</p>
-<section id="sources"><h2>来源与授权</h2><div class="table-wrap"><table><thead><tr><th>来源</th><th>版本</th><th>状态</th><th>指纹 / 授权范围</th></tr></thead><tbody id="source-rows"></tbody></table></div></section>
+<section id="sources"><h2>来源与授权</h2><div class="table-wrap"><table><thead><tr><th>来源</th><th>版本</th><th>状态</th><th>指纹 / 授权范围</th><th>影响面</th></tr></thead><tbody id="source-rows"></tbody></table></div><pre id="impact-report"></pre></section>
 <section id="parse"><h2>资料处理</h2><div class="stack"><label>选择生成样本 <select id="parse-source"></select></label><button id="parse-check">读取解析见证</button></div><div id="parsed"></div></section>
 <section id="knowledge"><h2>知识与证据</h2><div id="units" class="columns"></div><details><summary>知识关系</summary><pre id="relations"></pre></details></section>
 <section id="search"><h2>检索与评测</h2><form id="search-form" class="stack"><label>查询 <input name="q" value="gold" maxlength="2000" required></label><label>方法 <select name="method"><option value="lexical">关键词</option><option value="semantic">合成语义</option><option value="hybrid">混合</option></select></label><label>领域 <select name="domain" id="search-domain"><option value="">全部</option></select></label><button>检索</button></form><div id="search-results"></div><button id="bench" class="quiet">运行合成检索评测</button><pre id="metrics"></pre></section>

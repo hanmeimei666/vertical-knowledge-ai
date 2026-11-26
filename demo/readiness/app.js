@@ -46,7 +46,10 @@ async function refresh() {
   by('counts').replaceChildren();
   [['来源',state.sources.length],['知识',state.units.length],['运行',state.runs.length]].forEach(([label,count])=>by('counts').append(el('dt',label),el('dd',count)));
   const rows=state.sources.map(s=>{const row=el('tr');[s.title,'v'+s.version,labels[s.status]||s.status].forEach(v=>row.append(el('td',v)));
-    const meta=el('td');meta.append(detail(s.sha256.slice(0,12)+'…', {sha256:s.sha256,format:s.format,authorization:s.authorization}));row.append(meta);return row;});
+    const meta=el('td');meta.append(detail(s.sha256.slice(0,12)+'…', {sha256:s.sha256,format:s.format,sensitivity:s.sensitivity,authorization:s.authorization}));row.append(meta);
+    const impactCell=el('td');const impactBtn=el('button','查看影响面');impactBtn.className='quiet';
+    handle(impactBtn,'click',async()=>{const rep=await api('/api/impact?source='+encodeURIComponent(s.id));by('impact-report').textContent=JSON.stringify(rep,null,2);});
+    impactCell.append(impactBtn);row.append(impactCell);return row;});
   by('source-rows').replaceChildren(...rows);
   by('parse-source').replaceChildren(...state.parses.map(r=>option(r.body.source,r.body.source+' · '+r.body.stages.join(' / '))));
   by('units').replaceChildren(...state.units.map(u=>{

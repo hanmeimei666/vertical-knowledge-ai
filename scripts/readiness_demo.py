@@ -1,6 +1,6 @@
-"""Loopback-only synthetic workbench. Run with Python 3.11 or newer."""
+"""Loopback-only threaded workbench (synthetic demo by default; optional persistent operator workspace)."""
 import argparse
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
 import secrets
@@ -11,87 +11,109 @@ import webbrowser
 from pipeline import ROOT, load
 from readiness_agent import artifact, ensure_current, produce, review
 from readiness_demo_data import isolate, seed, evaluate
-from readiness_parse import parse
+from readiness_parse import correct_span, parse
 from readiness_retrieval import search
 from readiness_store import Readiness
 
-STATIC = ROOT/'demo/readiness'
-COURSES = load(ROOT/'config/course_tracks.json')
-MEDIA = {'.png':'image/png','.wav':'audio/wav','.mp4':'video/mp4','.json':'application/json',
-         '.js':'text/javascript','.css':'text/css','.html':'text/html','.md':'text/plain'}
+STATIC = ROOT / 'demo/readiness'
+COURSES = load(ROOT / 'config/course_tracks.json')
+MEDIA = {'.png': 'image/png', '.wav': 'audio/wav', '.mp4': 'video/mp4', '.json': 'application/json',
+         '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.md': 'text/plain'}
 
 
 class Workbench:
-    def __init__(self, home, full=False):
+    def __init__(self, home, full=False, *, persistent_workspace=None, authorized_local_intake=False):
         self.home = Path(home)
         self.full = full
+        self.persistent_workspace = Path(persistent_workspace).resolve() if persistent_workspace else None
+        self.authorized_local_intake = bool(authorized_local_intake and self.persistent_workspace)
         self.root = None
-        self.reset()
+        if self.persistent_workspace:
+            if not (self.persistent_workspace / 'config/readiness.json').is_file():
+                isolate(self.persistent_workspace)
+            self.root = self.persistent_workspace
+        else:
+            self.reset()
+
+    def open_app(self):
+        return Readiness(self.root, authorized_local_intake=self.authorized_local_intake)
 
     def reset(self):
-        target = isolate(self.home/uuid.uuid4().hex)
+        if self.persistent_workspace:
+            raise PermissionError('Reset is disabled for persistent workspaces')
+        target = isolate(self.home / uuid.uuid4().hex)
         with Readiness(target) as app:
-            seed(app,self.full)
+            seed(app, self.full)
         self.root = target
-        return {'workspace':self.root.name}
+        return {'workspace': self.root.name}
 
     def overview(self, app):
-        sources = []
-        for row in app.records('ReadinessSource'):
-            p = app.record('SourceAuthorization',row['id'])
-            sources.append(dict(id=row['id'],version=row['body']['version'],title=row['body']['title'],
-                                format=row['body']['source_type'],sha256=row['body']['sha256'],
-                                status=app.source_status(row),authorization=p and p['body']))
-        units = []
-        permitted = set()
-        for item in app.records('ReadinessUnit'):
-            try:
-                for ref in item['body']['references']:
-                    app.evidence_span(ref)
-            except (PermissionError, ValueError, OSError):
-                item = {'id':item['id'],'state':item['state'],'revision':item['revision'],
-                        'body':{'title':'受限条目 / '+item['id']}}
-            else:
-                permitted.add(item['id'])
-            units.append(item)
-        relations = [r for r in app.records('ReadinessRelation') if
-                     {r['body']['subject'],r['body']['object']} <= permitted]
-        runs = []
-        for row in app.db.execute('SELECT id FROM runs ORDER BY created DESC'):
-            run = app.get_run(row['id'],check=False)
-            if 'evidence' in run['steps']:
+        with app.verification_cache():
+            sources = []
+            for row in app.records('ReadinessSource'):
+                p = app.record('SourceAuthorization', row['id'])
+                sources.append(dict(id=row['id'], version=row['body']['version'], title=row['body']['title'],
+                                    format=row['body']['source_type'], sha256=row['body']['sha256'],
+                                    sensitivity=row['body'].get('sensitivity', 'none'),
+                                    status=app.source_status(row), authorization=p and p['body']))
+            units = []
+            permitted = set()
+            for item in app.records('ReadinessUnit'):
                 try:
-                    ensure_current(app,run)
+                    for ref in item['body']['references']:
+                        app.evidence_span(ref)
                 except (PermissionError, ValueError, OSError):
-                    run['steps'] = {}
-                    if run['state'] in {'draft_ready','approved','published'}:
-                        run['state'] = 'invalidated'
-            runs.append(run)
-        return {'workspace':self.root.name,'synthetic':True,'courses':COURSES,'sources':sources,
-                'units':units,'relations':relations,
-                'parses':app.records('ParseRun'),'runs':runs,
-                'events':[dict(r) for r in app.db.execute('SELECT * FROM audit ORDER BY seq DESC LIMIT 30')]}
+                    item = {'id': item['id'], 'state': item['state'], 'revision': item['revision'],
+                            'body': {'title': '受限条目 / ' + item['id']}}
+                else:
+                    permitted.add(item['id'])
+                units.append(item)
+            relations = [r for r in app.records('ReadinessRelation') if
+                         {r['body']['subject'], r['body']['object']} <= permitted]
+            runs = []
+            for row in app.db.execute('SELECT id FROM runs ORDER BY created DESC'):
+                run = app.get_run(row['id'], check=False)
+                if 'evidence' in run['steps']:
+                    try:
+                        ensure_current(app, run)
+                    except (PermissionError, ValueError, OSError):
+                        run['steps'] = {}
+                        if run['state'] in {'draft_ready', 'approved', 'published'}:
+                            run['state'] = 'invalidated'
+                runs.append(run)
+        return {
+            'workspace': self.root.name,
+            'synthetic': not self.authorized_local_intake,
+            'persistent': bool(self.persistent_workspace),
+            'courses': COURSES,
+            'sources': sources,
+            'units': units,
+            'relations': relations,
+            'parses': app.records('ParseRun'),
+            'runs': runs,
+            'events': [dict(r) for r in app.db.execute('SELECT * FROM audit ORDER BY seq DESC LIMIT 30')],
+        }
 
 
 def serve(workbench, port=8766):
     key = secrets.token_urlsafe(32)
 
     class Handler(BaseHTTPRequestHandler):
-        def reply(self,status,body,mime='application/json; charset=utf-8',activity=False):
+        def reply(self, status, body, mime='application/json; charset=utf-8', activity=False):
             self.send_response(status)
-            self.send_header('Content-Type',mime)
-            self.send_header('Content-Length',str(len(body)))
-            self.send_header('Cache-Control','no-store')
-            self.send_header('X-Content-Type-Options','nosniff')
-            self.send_header('Referrer-Policy','no-referrer')
-            self.send_header('X-Frame-Options','DENY')
+            self.send_header('Content-Type', mime)
+            self.send_header('Content-Length', str(len(body)))
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.send_header('Referrer-Policy', 'no-referrer')
+            self.send_header('X-Frame-Options', 'DENY')
             scripts = "'self' 'unsafe-inline'" if activity else "'self'"
-            self.send_header('Content-Security-Policy',f"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src {scripts}; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+            self.send_header('Content-Security-Policy', f"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src {scripts}; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
             self.end_headers()
             self.wfile.write(body)
 
-        def json(self,status,data):
-            self.reply(status,json.dumps(data,ensure_ascii=False).encode('utf8'))
+        def json(self, status, data):
+            self.reply(status, json.dumps(data, ensure_ascii=False).encode('utf8'))
 
         def check_host(self):
             host = f'127.0.0.1:{self.server.server_port}'
@@ -103,91 +125,112 @@ def serve(workbench, port=8766):
             try:
                 self.check_host()
                 url = urlsplit(self.path)
-                static = {'/':'index.html','/style.css':'style.css','/app.js':'app.js'}
+                static = {'/': 'index.html', '/style.css': 'style.css', '/app.js': 'app.js'}
                 if url.path in static:
-                    file = STATIC/static[url.path]
-                    return self.reply(200,file.read_bytes(),MEDIA[file.suffix]+'; charset=utf-8')
-                with Readiness(workbench.root) as app:
-                    if url.path=='/api/state':
-                        return self.json(200,dict(workbench.overview(app),session=key + '.' + workbench.root.name,full=workbench.full))
-                    if url.path=='/api/search':
-                        query = parse_qs(url.query,keep_blank_values=True)
-                        method = query.get('method',['lexical'])[0]
-                        facet = query.get('domain',[''])[0]
-                        return self.json(200,search(app,query.get('q',[''])[0],
-                                                    {'domain':[facet]} if facet else None,method=method,expand=True))
-                    if url.path=='/api/benchmark':
-                        return self.json(200,evaluate(app))
+                    file = STATIC / static[url.path]
+                    return self.reply(200, file.read_bytes(), MEDIA[file.suffix] + '; charset=utf-8')
+                with workbench.open_app() as app:
+                    if url.path == '/api/state':
+                        return self.json(200, dict(workbench.overview(app), session=key + '.' + workbench.root.name, full=workbench.full))
+                    if url.path == '/api/search':
+                        query = parse_qs(url.query, keep_blank_values=True)
+                        method = query.get('method', ['lexical'])[0]
+                        facet = query.get('domain', [''])[0]
+                        return self.json(200, search(app, query.get('q', [''])[0],
+                                                     {'domain': [facet]} if facet else None, method=method, expand=True))
+                    if url.path == '/api/benchmark':
+                        return self.json(200, evaluate(app))
+                    if url.path == '/api/impact':
+                        query = parse_qs(url.query, keep_blank_values=True)
+                        source_id = query.get('source', [''])[0] or None
+                        unit_id = query.get('unit', [''])[0] or None
+                        return self.json(200, app.impact_analysis(source_id=source_id, unit_id=unit_id))
                     pieces = url.path.split('/')
-                    if len(pieces)==4 and pieces[1]=='artifacts':
-                        file = artifact(app,pieces[2],pieces[3])
-                        mime = MEDIA.get(file.suffix,'application/octet-stream')
-                        return self.reply(200,file.read_bytes(),mime,activity=file.name=='activity.html')
-                self.json(404,{'error':'Unknown route'})
+                    if len(pieces) == 4 and pieces[1] == 'artifacts':
+                        file = artifact(app, pieces[2], pieces[3])
+                        mime = MEDIA.get(file.suffix, 'application/octet-stream')
+                        return self.reply(200, file.read_bytes(), mime, activity=file.name == 'activity.html')
+                self.json(404, {'error': 'Unknown route'})
             except PermissionError as exc:
-                self.json(403,{'error':str(exc)})
+                self.json(403, {'error': str(exc)})
             except (ValueError, OSError) as exc:
-                self.json(400,{'error':str(exc)})
+                self.json(400, {'error': str(exc)})
 
         def do_POST(self):
             try:
-                length = int(self.headers.get('Content-Length',0))
+                length = int(self.headers.get('Content-Length', 0))
                 if not 1 <= length <= 16384:
                     raise ValueError('Request size outside local limit')
                 self.connection.settimeout(10)
                 payload = self.rfile.read(length)
                 origin = self.check_host()
-                if (self.headers.get('Origin')!=origin
-                        or not secrets.compare_digest(self.headers.get('X-Workbench-Session',''),key + '.' + workbench.root.name)
-                        or self.headers.get_content_type()!='application/json'):
+                if (self.headers.get('Origin') != origin
+                        or not secrets.compare_digest(self.headers.get('X-Workbench-Session', ''), key + '.' + workbench.root.name)
+                        or self.headers.get_content_type() != 'application/json'):
                     raise PermissionError('Same-origin operator session required')
                 body = json.loads(payload)
-                if not isinstance(body,dict):
+                if not isinstance(body, dict):
                     raise ValueError('Expected an object')
-                if self.path=='/api/reset' and not body:
-                    return self.json(200,workbench.reset())
-                with Readiness(workbench.root) as app:
-                    if self.path=='/api/run' and set(body)<= {'request','key','retry'} and {'request','key'}<=body.keys():
-                        run = produce(app,body['request'],body['key'],retry=body.get('retry') is True)
-                        return self.json(200,run)
-                    if self.path=='/api/parse' and set(body)=={'id'} and isinstance(body['id'],str):
-                        existing = next((r for r in app.records('ParseRun') if r['body']['source']==body['id']),None)
+                if self.path == '/api/reset' and not body:
+                    return self.json(200, workbench.reset())
+                with workbench.open_app() as app:
+                    if self.path == '/api/run' and set(body) <= {'request', 'key', 'retry'} and {'request', 'key'} <= body.keys():
+                        run = produce(app, body['request'], body['key'], retry=body.get('retry') is True)
+                        return self.json(200, run)
+                    if self.path == '/api/parse' and set(body) == {'id'} and isinstance(body['id'], str):
+                        existing = next((r for r in app.records('ParseRun') if r['body']['source'] == body['id']), None)
                         if not existing:
                             raise ValueError('Unknown generated sample')
-                        result = parse(app,body['id'],existing['id'],existing['body']['stages'],retry=True)
-                        return self.json(200,result)
-                    if self.path=='/api/unit-review' and set(body)=={'unit','decision'}:
-                        unit = app.record('ReadinessUnit',body['unit'])
-                        if (not unit or body['decision'] not in {'approved','rejected','withdrawn'}):
+                        result = parse(app, body['id'], existing['id'], existing['body']['stages'], retry=True)
+                        return self.json(200, result)
+                    if self.path == '/api/span-correct' and set(body) == {'id', 'ref', 'content', 'note'}:
+                        corrected = correct_span(app, body['id'], body['ref'], body['content'],
+                                                 'local-operator', body['note'])
+                        return self.json(200, {'corrected_ref': corrected})
+                    if self.path == '/api/unit-draft' and {'id', 'ref', 'title', 'facets'} <= body.keys() and set(body) <= {'id', 'ref', 'title', 'statement', 'facets', 'objectives', 'prerequisites', 'risks'}:
+                        created = app.draft_unit_from_span(
+                            body['id'], body['ref'], title=body['title'], statement=body.get('statement'),
+                            facets=body['facets'], objectives=body.get('objectives'),
+                            prerequisites=body.get('prerequisites'), risks=body.get('risks'),
+                        )
+                        return self.json(200, created)
+                    if self.path == '/api/unit-review' and set(body) == {'unit', 'decision'}:
+                        unit = app.record('ReadinessUnit', body['unit'])
+                        if (not unit or body['decision'] not in {'approved', 'rejected', 'withdrawn'}):
                             raise ValueError('Unknown unit or decision')
                         for ref in unit['body']['references']:
                             app.evidence_span(ref)
-                        revision = app.review_unit(body['unit'],'synthetic-local-operator',body['decision'],
+                        revision = app.review_unit(body['unit'], 'synthetic-local-operator', body['decision'],
                                                    'Local demonstration review of generated fixtures')
-                        return self.json(200,{'unit':body['unit'],'revision':revision})
-                    if self.path=='/api/review' and set(body)=={'run','decision'} and body['decision'] in {'approved','withdrawn','rejected'}:
-                        result = review(app,body['run'],reviewer='synthetic-local-operator',decision=body['decision'],
+                        return self.json(200, {'unit': body['unit'], 'revision': revision})
+                    if self.path == '/api/review' and set(body) == {'run', 'decision'} and body['decision'] in {'approved', 'withdrawn', 'rejected'}:
+                        result = review(app, body['run'], reviewer='synthetic-local-operator', decision=body['decision'],
                                         note='Local demonstration review of generated fixtures')
-                        return self.json(200,result)
-                self.json(404,{'error':'Unknown local action'})
+                        return self.json(200, result)
+                self.json(404, {'error': 'Unknown local action'})
             except PermissionError as exc:
-                self.json(403,{'error':str(exc)})
+                self.json(403, {'error': str(exc)})
             except (ValueError, OSError, KeyError, TypeError) as exc:
-                self.json(400,{'error':str(exc)})
+                self.json(400, {'error': str(exc)})
 
-    return HTTPServer(('127.0.0.1',port),Handler)
+    return ThreadingHTTPServer(('127.0.0.1', port), Handler)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--port',type=int,default=8766)
-    parser.add_argument('--full',action='store_true',help='Include PDF, image, FFmpeg and media timeline')
-    parser.add_argument('--no-browser',action='store_true')
+    parser.add_argument('--port', type=int, default=8766)
+    parser.add_argument('--full', action='store_true', help='Include PDF, image, FFmpeg and media timeline')
+    parser.add_argument('--workspace', type=str, default=None, help='Open or initialize a persistent local workspace directory')
+    parser.add_argument('--authorized-local-intake', action='store_true', help='Enable operator authorized-local mode (requires --workspace)')
+    parser.add_argument('--no-browser', action='store_true')
     args = parser.parse_args()
-    app = Workbench(ROOT/'data/v04-demo',args.full)
-    with serve(app,args.port) as http:
+    app = Workbench(ROOT / 'data/v04-demo', args.full,
+                    persistent_workspace=args.workspace,
+                    authorized_local_intake=args.authorized_local_intake)
+    with serve(app, args.port) as http:
         address = f'http://127.0.0.1:{http.server_port}'
-        print(f'Synthetic workbench {address} | {app.root}',flush=True)
+        mode_tag = 'Persistent operator workbench' if app.persistent_workspace else 'Synthetic workbench'
+        print(f'{mode_tag} {address} | {app.root}', flush=True)
         if not args.no_browser:
             webbrowser.open(address)
         try:
@@ -196,5 +239,5 @@ def main():
             pass
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()
