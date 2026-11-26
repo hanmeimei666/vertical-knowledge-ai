@@ -12,5 +12,35 @@
   "limitations": [
     "分类标签不代表专业适用性；适用条件与不适用条件须单独确认。",
     "测试内容不代表专业结论，输出仍须审核。"
-  ]
+  ],
+  "sensitivity_policy": {
+    "none": [
+      "internal_parse",
+      "retrieve",
+      "adapt",
+      "redistribute",
+      "model_training",
+      "external_model_processing",
+      "ocr",
+      "asr",
+      "video_processing"
+    ],
+    "internal": [
+      "internal_parse",
+      "retrieve",
+      "adapt",
+      "ocr",
+      "asr",
+      "video_processing"
+    ],
+    "anonymized": [
+      "internal_parse",
+      "retrieve",
+      "adapt",
+      "redistribute",
+      "ocr",
+      "asr",
+      "video_processing"
+    ]
+  }
 }
