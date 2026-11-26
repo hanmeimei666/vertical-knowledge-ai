@@ -3,7 +3,7 @@ import hashlib
 import re
 
 from pipeline import digest, inside
-from readiness_media import ParserRegistry, native, pdf_pages, pdf_parts
+from readiness_media import ParserRegistry, chunk_document, chunk_segments, native, pdf_pages, pdf_parts
 from readiness_store import sha256
 
 
@@ -62,6 +62,12 @@ def parse(app, source_id, key, stages=('native',), retry=False, registry=None):
                 directory.mkdir(exist_ok=True)
                 if adapter is native and path.suffix=='.pdf':
                     segments = read_pdf_chunks(app,source,path,part_id)
+                elif adapter is chunk_document:
+                    native_part = app.record('ParseRevision', digest([key, 'native']))
+                    if native_part and native_part['state'] == 'completed':
+                        segments = chunk_segments(native_part['body']['segments'])
+                    else:
+                        segments = adapter(path,source_id,source['revision'],directory)
                 else:
                     segments = adapter(path,source_id,source['revision'],directory)
                 app.authorize(source_id,'internal_parse',*permissions,revision=source['revision'])
